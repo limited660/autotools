@@ -112,6 +112,8 @@ header h1 {
 }
 #bar small { font-size: 14px; font-weight: 600; opacity: .85; }
 #bar:not(.show) { display: none; }
+#bar.long { font-size: 15px; flex-wrap: wrap; text-align: center; }
+/* ---- "Update ready" button above the bottom menu ---- */
 #upd {
   position: fixed;
   left: 12px;
@@ -129,9 +131,8 @@ header h1 {
   cursor: pointer;
 }
 #upd[hidden] { display: none; }
-#bar.long { font-size: 15px; flex-wrap: wrap; text-align: center; }
 
-
+/* A page sliding sideways mustn't make the whole window scroll sideways */
 html, body { overflow-x: clip; }
 main {
   max-width: 520px;
@@ -225,9 +226,8 @@ label.field > span { display: block; font-size: 16px; font-weight: 600; color: v
   border-radius: 8px;
   background: var(--card);
   color: var(--text);
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1;
+  padding: 0;
+  font-size: 0; /* the + and - are drawn as bars below */
   cursor: pointer;
   touch-action: manipulation;
   user-select: none;
@@ -236,7 +236,6 @@ label.field > span { display: block; font-size: 16px; font-weight: 600; color: v
 .step.down { left: 6px; }
 .step.up { right: 6px; }
 /* Draw + and − as bars so they sit dead center whatever the phone's font */
-.step { padding: 0; font-size: 0; }
 .step::before, .step.up::after {
   content: "";
   position: absolute;
@@ -477,16 +476,6 @@ html.nozoom #app { touch-action: pan-y; }
 .sym svg { width: 100%; max-width: 150px; height: auto; color: var(--text); display: block; margin: 0 auto; }
 .sym.wide { grid-column: span 2; }
 .card:has(> .swipebox) { overflow: hidden; } /* sliding content stays inside its card */
-/* Symbols cut from a reference chart: the picture is a mask, filled with the text color */
-.symimg {
-  width: 100%;
-  max-width: 150px;
-  aspect-ratio: 120 / 80;
-  margin: 0 auto;
-  background: var(--text);
-  -webkit-mask: no-repeat center / contain;
-  mask: no-repeat center / contain;
-}
 .sechead {
   margin: 0 0 4px;
   font-size: 15px;
@@ -499,7 +488,7 @@ html.nozoom #app { touch-action: pan-y; }
 .secnote { margin: 0 0 10px; font-size: 14px; color: var(--muted); text-align: center; }
 .sym.wide svg { max-width: 300px; }
 /* Every symbol draws its lines at the same width on screen, whatever its size
-   or scale (valves are shown bigger; chart-measured symbols are scaled down) */
+   (valves are shown bigger) */
 .sym svg { stroke-width: 1.5px; }
 .sym svg * { vector-effect: non-scaling-stroke; }
 .sym b { display: block; font-size: 15px; margin-top: 4px; }
@@ -1035,10 +1024,9 @@ function renderWires() {
 }
 
 // ---- Subnet tab: mask (255.255.255.0) <-> prefix (/24) ----
-function prefixToMask(n) {
-  var m = n ? (0xffffffff << (32 - n)) >>> 0 : 0;
-  return [m >>> 24, (m >>> 16) & 255, (m >>> 8) & 255, m & 255].join(".");
-}
+function maskBits(n) { return n ? (0xffffffff << (32 - n)) >>> 0 : 0; }
+function ipText(u) { return [u >>> 24, (u >>> 16) & 255, (u >>> 8) & 255, u & 255].join("."); }
+function prefixToMask(n) { return ipText(maskBits(n)); }
 // Reads "255.255.255.0", "/24" or "24". Returns the prefix length, or null if it isn't a valid mask.
 function parseMask(t) {
   t = t.trim();
@@ -1049,8 +1037,6 @@ function parseMask(t) {
   for (var n = 0; n <= 32; n++) if (prefixToMask(n) === o.map(Number).join(".")) return n;
   return null; // the 1s aren't all on the left, e.g. 255.0.255.0
 }
-function maskBits(n) { return n ? (0xffffffff << (32 - n)) >>> 0 : 0; }
-function ipText(u) { return [u >>> 24, (u >>> 16) & 255, (u >>> 8) & 255, u & 255].join("."); }
 // Reads "192.168.1.50". Returns { u } or null. The prefix only comes from the mask box.
 function parseIP(t) {
   var m = t.trim().match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
@@ -1104,6 +1090,10 @@ function renderSubnet() {
   card.appendChild(mBox.lab);
   var out = document.createElement("div");
   out.className = "subout";
+  out.onclick = function (e) { // tap any result to copy it
+    var el = e.target.closest("[data-copy]");
+    if (el) copyText(el.dataset.copy);
+  };
   card.appendChild(out);
   function show() {
     var ipT = ipBox.inp.value.trim(), ip = ipT ? parseIP(ipT) : null;
@@ -1231,7 +1221,6 @@ function groupOf(t) {
   for (var g in GROUPS) if (GROUPS[g].some(function (x) { return x[0] === t; })) return g;
   return "conv";
 }
-var curList = []; // the input boxes on screen (for history)
 // ---- Symbols page: common schematic symbols ----
 // Drawn simplified, in a 120 x 80 box. Electrical follows the NEMA / ANSI
 // ladder style common in the US; pneumatic and hydraulic follow ISO 1219.
@@ -1455,11 +1444,8 @@ function symGrid(list) {
   var h = '<div class="syms">';
   list.forEach(function (sy) {
     var wide = /^\d\/\d valve/.test(sy[0]);
-    var art = typeof sy[2] === "object"
-      ? '<div class="symimg" role="img" aria-label="' + sy[0] + '" style="-webkit-mask-image:url(' + sy[2].img +
-        ');mask-image:url(' + sy[2].img + ')"></div>'
-      : '<svg viewBox="0 0 120 80" fill="none" stroke="currentColor" stroke-width="1.25" ' +
-        'stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="' + sy[0] + '">' + sy[2] + "</svg>";
+    var art = '<svg viewBox="0 0 120 80" fill="none" stroke="currentColor" stroke-width="1.25" ' +
+      'stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="' + sy[0] + '">' + sy[2] + "</svg>";
     h += '<div class="sym' + (wide ? " wide" : "") + '">' + art + "<b>" +
       sy[0] + "</b>" + (sy[1] ? "<span>" + sy[1] + "</span>" : "") + "</div>";
   });
@@ -1486,7 +1472,7 @@ function renderSymbols() {
   var box = document.createElement("div");
   box.className = "swipebox"; // slides on its own when swiping between choices
   if (S.c9.k === "valves") {
-    // Valves are shown in sections: directional, actuators, pressure, flow
+    // Valves are shown in sections: directional valves, then actuators
     box.innerHTML = VALVE_SECTIONS.map(function (sec) {
       return '<h2 class="sechead">' + sec[0] + "</h2>" + (sec[2] ? '<p class="secnote">' + sec[2] + "</p>" : "") +
         symGrid(SYMBOLS[sec[1]]);
@@ -1544,7 +1530,7 @@ function renderPage() {
   var track = document.createElement("div"); // one shaded bar holding the tabs
   track.className = "track";
   if (GROUPS[grp].length > 1) pages.appendChild(track);
-  if (GROUPS[grp].length > 1) GROUPS[grp].forEach(function (pg) {
+  GROUPS[grp].forEach(function (pg) {
     var b = document.createElement("button");
     b.type = "button";
     b.setAttribute("role", "tab");
@@ -1572,7 +1558,7 @@ function renderPage() {
   rb.className = "reset";
   rb.textContent = "Reset";
   rb.onclick = function () {
-    S[c] = JSON.parse(JSON.stringify(DEF[c]));
+    setCalc(c, {});
     save();
     render();
     toast("Reset to defaults");
@@ -1672,10 +1658,20 @@ function renderPage() {
   app.appendChild(about);
 }
 
+// Put a calculator's entries back (from Reset or History). Anything the saved copy doesn't have,
+// for example a box added in a later version, gets its default; the shared inch / mm choice stays.
+function setCalc(c, saved) {
+  var u = S[c].u, fresh = JSON.parse(JSON.stringify(DEF[c]));
+  for (var k in fresh) if (saved && k in saved) fresh[k] = saved[k];
+  if (u) fresh.u = u;
+  S[c] = fresh;
+}
+
 // ---- History: the last 10 results on each calculator ----
 // A result is saved a moment after you stop changing the entries.
 // Tap a saved result to put its entries back.
 var histBox = null, histT, lastSum = null;
+var curList = []; // the input boxes on screen (for history)
 function histKey() { return "c" + S.tab; }
 function inputsText() {
   var c = histKey();
@@ -1719,7 +1715,7 @@ function renderHist() {
   histBox.open = wasOpen;
   histBox.querySelectorAll(".hrow").forEach(function (el) {
     el.onclick = function () {
-      S[c] = JSON.parse(JSON.stringify(list[+el.dataset.n].s));
+      setCalc(c, list[+el.dataset.n].s);
       save();
       render();
       toast("Entries restored");
@@ -1902,7 +1898,7 @@ function renderResults() {
       var box = app.querySelector('input[data-k="' + f.k + '"]');
       if (box) box.closest("label").querySelector("span").textContent = f.label;
     });
-    if (rg[1] === rg[0] || a7.eh === a7.el) return stop();
+    if (rg[1] === rg[0] || (a7.m === "v2s" && a7.eh === a7.el)) return stop();
     var sig, val;
     if (a7.m === "s2v") {
       sig = a7.sig;
@@ -1956,6 +1952,7 @@ function renderResults() {
       if (len === 0) {
         resultsBox.innerHTML = h + '<p class="err">A quaternion can\'t be all zeros.</p>';
         setBar(["Results", "Quaternion can't be all zeros"]);
+        lastSum = null;
         return;
       }
       var qn = raw.map(function (x) { return x / len; });
@@ -2082,8 +2079,8 @@ var SWIPE_SUBS = {
   9: ["c9", "k", ["elec", "pneu", "hyd", "valves"]],
   14: ["c14", "k", ["unc", "unf", "m"]]
 };
-// Returns what a swipe one step left (+1) or right (-1) does, or null if there's nothing that way
 var GROUP_ORDER = ["conv", "ctrl", "ref", "robot"];
+// Returns what a swipe one step left (+1) or right (-1) does, or null if there's nothing that way
 function pageAt(step, onSub, onNav) {
   if (onNav) {
     // bottom menu: next / previous group, opening the page last used there
@@ -2099,11 +2096,11 @@ function pageAt(step, onSub, onNav) {
   var t = list[i + step] ? list[i + step][0] : null;
   return t === null ? null : function () { openTab(t); };
 }
-function slide(x, ms, sub) {
+function slide(x, dur, sub) {
   // swiping between choices moves just the content under the selector; otherwise the whole page.
   // "sub" is fixed when the swipe starts, so a page change always finishes on the page itself
   var el = (sub && app.querySelector(".swipebox")) || app;
-  el.style.transition = ms ? "transform " + ms + "ms ease-out" : "none";
+  el.style.transition = dur ? "transform " + dur + "ms ease-out" : "none";
   el.style.transform = x ? "translateX(" + x + "px)" : "";
 }
 // Is this point on the selector or the content under it? Goes by position, not by what's

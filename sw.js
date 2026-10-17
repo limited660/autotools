@@ -32,8 +32,12 @@ self.addEventListener("fetch", function (e) {
   if (new URL(e.request.url).origin !== self.location.origin) return;
   e.respondWith(
     fresh(e.request).then(function (r) {
-      var copy = r.clone();
-      caches.open(VERSION).then(function (c) { c.put(e.request, copy); });
+      // Keep one copy per file: "version.js?nc=123" (the update check) is stored as "version.js"
+      // instead of a new entry every time. Errors aren't stored.
+      if (r.ok) {
+        var copy = r.clone();
+        caches.open(VERSION).then(function (c) { c.put(e.request.url.split("?")[0], copy); });
+      }
       return r;
     }).catch(function () {
       return caches.match(e.request, { ignoreSearch: true }).then(function (r) {
