@@ -452,7 +452,7 @@ nav button[aria-selected="true"] { opacity: 1; color: var(--accent); border-top-
 }
 #pages button[aria-selected="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 
-html.nozoom, html.nozoom body { touch-action: pan-x pan-y; }
+html.nozoom, html.nozoom body { touch-action: pan-y; }
 /* The page only scrolls up and down by itself; sideways drags are page swipes */
 #app { touch-action: pan-y pinch-zoom; }
 html.nozoom #app { touch-action: pan-y; }
@@ -2050,16 +2050,16 @@ function openTab(t) {
 // Swipe left / right on the page to go to the next / previous tab in its group.
 // The page follows your finger; let go past a quarter of the screen (or flick) to change page.
 var swipe = null;
-// On Wires, Symbols and Tap drill a swipe steps through the page's own choices
-// (cable, symbol type, thread) instead of changing page
+// On Wires, Symbols and Tap Drill a swipe on the selector or the content under it steps through
+// the page's own choices (cable, symbol type, thread); a swipe anywhere else changes page
 var SWIPE_SUBS = {
   5: ["c5", "pins", [4, 5]],
   9: ["c9", "k", ["elec", "pneu", "hyd", "valves"]],
   14: ["c14", "k", ["unc", "unf", "m"]]
 };
 // Returns what a swipe one step left (+1) or right (-1) does, or null if there's nothing that way
-function pageAt(step) {
-  var sub = SWIPE_SUBS[S.tab];
+function pageAt(step, onSub) {
+  var sub = onSub && SWIPE_SUBS[S.tab];
   if (sub) {
     var opts = sub[2], v = opts[opts.indexOf(S[sub[0]][sub[1]]) + step];
     return v === undefined ? null : function () { S[sub[0]][sub[1]] = v; save(); render(); window.scrollTo(0, 0); };
@@ -2075,14 +2075,16 @@ function slide(x, ms, sub) {
   el.style.transition = ms ? "transform " + ms + "ms ease-out" : "none";
   el.style.transform = x ? "translateX(" + x + "px)" : "";
 }
-app.addEventListener("touchstart", function (e) {
+// Listens on the whole screen so the empty space under the page swipes too
+document.addEventListener("touchstart", function (e) {
   var t = e.target;
-  // not while typing, on a zoomed-in Symbols page, or with two fingers
-  if (e.touches.length !== 1 || t.closest("input, select, textarea") ||
+  // not on the header, tab strips or bars, while typing, on a zoomed-in Symbols page, or with two fingers
+  if (e.touches.length !== 1 || t.closest("input, select, textarea, header, nav, #pages, #upd, #bar") ||
       (window.visualViewport && window.visualViewport.scale > 1.01)) { swipe = null; return; }
-  swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), dx: 0, side: false, sub: !!SWIPE_SUBS[S.tab] };
+  swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), dx: 0, side: false,
+    sub: !!SWIPE_SUBS[S.tab] && !!t.closest(".swipebox, .seg") };
 }, { passive: true });
-app.addEventListener("touchmove", function (e) {
+document.addEventListener("touchmove", function (e) {
   if (!swipe) return;
   var dx = e.touches[0].clientX - swipe.x, dy = e.touches[0].clientY - swipe.y;
   if (!swipe.side) {
@@ -2095,7 +2097,7 @@ app.addEventListener("touchmove", function (e) {
   }
   e.preventDefault(); // don't scroll up and down while dragging sideways
   // no page that way: drag with resistance
-  swipe.dx = pageAt(dx < 0 ? 1 : -1) ? dx : dx / 3;
+  swipe.dx = pageAt(dx < 0 ? 1 : -1, swipe.sub) ? dx : dx / 3;
   slide(swipe.dx, 0, swipe.sub);
 }, { passive: false });
 function endSwipe() {
@@ -2104,7 +2106,7 @@ function endSwipe() {
   swipe = null;
   if (!sw.side) return;
   var w = window.innerWidth, dx = sw.dx, fast = Math.abs(dx) / (Date.now() - sw.t) > 0.5;
-  var next = pageAt(dx < 0 ? 1 : -1);
+  var next = pageAt(dx < 0 ? 1 : -1, sw.sub);
   if (!next || (Math.abs(dx) < w / 4 && !fast)) { slide(0, 180, sw.sub); return; } // snap back
   var dir = dx < 0 ? -1 : 1;
   slide(dir * w, 160, sw.sub); // finish sliding out...
@@ -2115,8 +2117,8 @@ function endSwipe() {
     slide(0, 200, sw.sub);
   }, 160);
 }
-app.addEventListener("touchend", endSwipe);
-app.addEventListener("touchcancel", endSwipe);
+document.addEventListener("touchend", endSwipe);
+document.addEventListener("touchcancel", endSwipe);
 // A group button opens the page you last used in that group
 document.querySelectorAll("nav button[data-group]").forEach(function (b) {
   b.onclick = function () { openTab(S.last[b.dataset.group]); };
