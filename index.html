@@ -420,6 +420,8 @@ nav button[aria-selected="true"] { opacity: 1; color: var(--accent); border-top-
 }
 #pages button[aria-selected="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 
+html.nozoom, html.nozoom body { touch-action: pan-x pan-y; }
+
 /* ---- Symbols page ---- */
 .syms { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .sym {
@@ -1460,10 +1462,18 @@ function renderSymbols() {
   setBar(["", ""]);
 }
 
+// Pinch and double-tap zoom only on the Symbols page; elsewhere it just gets in the way
+var VIEWPORT = "width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content";
+function setZoom(on) {
+  document.querySelector('meta[name="viewport"]').content = VIEWPORT + (on ? "" : ", maximum-scale=1, user-scalable=no");
+  document.documentElement.classList.toggle("nozoom", !on);
+}
+
 function render() {
   // The old Valves page now lives on the Symbols page
   if (S.tab === 10) { S.tab = 9; S.c9.k = "valves"; }
   if (S.tab === 13) S.tab = 7; // the AI wiring page was removed
+  setZoom(S.tab === 9);
   for (var g in S.last) if (S.last[g] === 10 || groupOf(S.last[g]) !== g) S.last[g] = DEF.last[g];
   invalid = {};
   clearTimeout(histT);
