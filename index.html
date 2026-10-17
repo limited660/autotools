@@ -158,6 +158,8 @@ main {
   border-radius: 8px;
   cursor: pointer;
 }
+/* Four or more choices: smaller text so they fit a phone */
+.seg.many button { font-size: 14px; padding: 10px 2px; min-width: 0; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
 label.field { display: block; margin-bottom: 12px; }
 label.field > span { display: block; font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; text-align: center; }
@@ -408,6 +410,45 @@ nav button[aria-selected="true"] { opacity: 1; color: var(--accent); border-top-
 }
 #pages button[aria-selected="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 
+/* ---- Symbols page ---- */
+.syms { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sym {
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 6px 10px;
+  text-align: center;
+}
+.sym svg { width: 100%; max-width: 150px; height: auto; color: var(--text); display: block; margin: 0 auto; }
+.sym.wide { grid-column: span 2; }
+/* Symbols cut from a reference chart: the picture is a mask, filled with the text color */
+.symimg {
+  width: 100%;
+  max-width: 150px;
+  aspect-ratio: 120 / 80;
+  margin: 0 auto;
+  background: var(--text);
+  -webkit-mask: no-repeat center / contain;
+  mask: no-repeat center / contain;
+}
+.sechead {
+  margin: 0 0 4px;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  text-align: center;
+}
+.secgap { height: 16px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.secnote { margin: 0 0 10px; font-size: 14px; color: var(--muted); text-align: center; }
+.sym.wide svg { max-width: 300px; }
+/* Every symbol draws its lines at the same width on screen, whatever its size
+   or scale (valves are shown bigger; chart-measured symbols are scaled down) */
+.sym svg { stroke-width: 1.5px; }
+.sym svg * { vector-effect: non-scaling-stroke; }
+.sym b { display: block; font-size: 15px; margin-top: 4px; }
+.sym span { display: block; font-size: 13px; color: var(--muted); line-height: 1.3; margin-top: 2px; }
+
 /* ---- History ---- */
 .hist .hrow {
   display: flex;
@@ -462,6 +503,9 @@ nav button[aria-selected="true"] { opacity: 1; color: var(--accent); border-top-
   <button role="tab" data-group="ctrl">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h2M7 13h2M7 17h2"/><path d="M13 8l4 0M13 12h4M13 16h4"/></svg>
     Controls</button>
+  <button role="tab" data-group="ref">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/><path d="M8 7h7M8 11h5"/></svg>
+    Reference</button>
   <button role="tab" data-group="robot">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h8"/><path d="M8 20v-5"/><circle cx="8" cy="13" r="2"/><path d="M9.5 11.5l5-5"/><circle cx="16" cy="5" r="2"/><path d="M17.5 6.5l2.5 2.5"/></svg>
     Robot</button>
@@ -505,7 +549,8 @@ var DEF = {
   c7: { t: "ma", m: "s2v", sl: 0, sh: 27648, el: 0, eh: 100, sig: 12, val: 50 },
   c8: { u: "in", x: 4, ppr: 1024, D: 4, dist: 12, f: 100 },
   hist: {},
-  last: { conv: 1, ctrl: 7, robot: 4 } // last page opened in each group
+  last: { conv: 1, ctrl: 7, ref: 5, robot: 4 }, // last page opened in each group
+  c9: { k: "elec" }
 };
 var KEY = "autotools-v1";
 var S = JSON.parse(JSON.stringify(DEF));
@@ -513,7 +558,7 @@ try {
   // Older versions saved under "convcalc-v1"; carry those values over
   var saved = JSON.parse(localStorage.getItem(KEY) || localStorage.getItem("convcalc-v1") || "null");
   if (saved) {
-    ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"].forEach(function (c) {
+    ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9"].forEach(function (c) {
       if (saved[c]) for (var k in S[c]) if (k in saved[c]) S[c][k] = saved[c][k];
     });
     if (saved.tab) S.tab = saved.tab;
@@ -673,7 +718,7 @@ function seg(label, opts, cur, onPick) {
     w.appendChild(p);
   }
   var s = document.createElement("div");
-  s.className = "seg";
+  s.className = "seg" + (opts.length > 3 ? " many" : "");
   opts.forEach(function (o) {
     var b = document.createElement("button");
     b.type = "button";
@@ -919,7 +964,8 @@ function renderWires() {
 // header picks the page within it
 var GROUPS = {
   conv: [[1, "Speed"], [2, "Sensor"], [3, "Gap"], [6, "Drive"]],
-  ctrl: [[7, "Analog"], [8, "Encoder"], [5, "Wires"]],
+  ctrl: [[7, "Analog"], [8, "Encoder"]],
+  ref: [[5, "Wires"], [9, "Symbols"]],
   robot: [[4, "Orientation"]]
 };
 function groupOf(t) {
@@ -927,7 +973,284 @@ function groupOf(t) {
   return "conv";
 }
 var curList = []; // the input boxes on screen (for history)
+// ---- Symbols page: common schematic symbols ----
+// Drawn simplified, in a 120 x 80 box. Electrical follows the NEMA / ANSI
+// ladder style common in the US; pneumatic and hydraulic follow ISO 1219.
+function arrow(x1, y1, x2, y2) {
+  var a = Math.atan2(y2 - y1, x2 - x1), L = 4.5, W = 1.9;
+  var bx = x2 - L * Math.cos(a), by = y2 - L * Math.sin(a);
+  var px = W * Math.sin(a), py = -W * Math.cos(a);
+  return '<path d="M' + x1 + " " + y1 + "L" + bx.toFixed(1) + " " + by.toFixed(1) + '"/>' +
+    '<path d="M' + x2 + " " + y2 + "L" + (bx + px).toFixed(1) + " " + (by + py).toFixed(1) + "L" +
+    (bx - px).toFixed(1) + " " + (by - py).toFixed(1) + 'Z" fill="currentColor"/>';
+}
+// Text centered on (x, y). Capital letters sit on the baseline, so drop it by
+// about half a capital's height instead of relying on dominant-baseline,
+// which phones place differently.
+function txt(x, y, t, sz) {
+  sz = sz || 16;
+  return '<text x="' + x + '" y="' + (y + sz * 0.35).toFixed(1) + '" text-anchor="middle" font-size="' + sz +
+    '" font-weight="700" fill="currentColor" stroke="none" font-family="system-ui, sans-serif">' + t + "</text>";
+}
+function spring(x, y) { // zigzag spring, left to right
+  return '<path d="M' + x + " " + y + "l4 -6l4 12l4 -12l4 12l4 -12l4 6\"/>";
+}
+function solenoid(x, y) { // box with diagonal, right edge at x
+  return '<rect x="' + (x - 14) + '" y="' + (y - 7) + '" width="14" height="14"/><path d="M' + (x - 14) + " " +
+    (y + 7) + "L" + x + " " + (y - 7) + '"/>';
+}
+function block(x, y, up, w) { // blocked port (T); w = half-width of the bar
+  w = w || 5;
+  return '<path d="M' + x + " " + y + "V" + (up ? y - 8 : y + 8) + "M" + (x - w) + " " + (up ? y - 8 : y + 8) +
+    "H" + (x + w) + '"/>';
+}
+var CB = '<rect x="66" y="33" width="14" height="14"/>'; // small actuator box on the valve end
+var PILOT = '<rect x="66" y="32" width="14" height="16"/><path d="M69 35L78 40L69 45Z"/>';
+function box2() { return '<rect x="30" y="20" width="30" height="30"/><rect x="60" y="20" width="30" height="30"/>'; }
+function ends2() { return solenoid(30, 35) + '<path d="M90 35H92"/>' + spring(92, 35); }
+function box3() {
+  return '<rect x="24" y="25" width="24" height="26"/><rect x="48" y="25" width="24" height="26"/><rect x="72" y="25" width="24" height="26"/>';
+}
+// solenoid + spring on both ends of a 3-position valve
+function ends3() {
+  return '<rect x="1" y="31" width="11" height="14"/><path d="M1 45L12 31M12 38l2 -5l2.4 10l2.4 -10l2.4 10l2.4 -5"/>' +
+    '<path d="M96 38l2 -5l2.4 10l2.4 -10l2.4 10l2.4 -5"/><rect x="107.6" y="31" width="11" height="14"/><path d="M107.6 45L118.6 31"/>';
+}
+// ports on the center box of a 5/3 valve: A, B on top; R, P, S below
+function ports5() { return '<path d="M55 25V12M65 25V12M52 51V64M60 51V64M68 51V64"/>'; }
+// the two outer boxes of a 5/3 valve (same paths as a 5/2 valve)
+function outer5() {
+  return arrow(36, 49, 31, 27) + arrow(41, 27, 44, 49) + block(28, 51, true, 3) +
+    arrow(84, 49, 89, 27) + arrow(79, 27, 76, 49) + block(92, 51, true, 3);
+}
+// Three poles side by side (x = 40, 60, 80), tied together by a dashed line at linkY
+function POLES(pole, linkY) {
+  return pole(40) + pole(60) + pole(80) +
+    '<path d="M47 ' + linkY + 'H57M67 ' + linkY + 'H77" stroke-dasharray="3 2.5"/>';
+}
+// breaker contact: line, gap, a ")" arc set off to the right, gap, line continues at y + 20
+function ARC(x, y) {
+  return "M" + x + " " + y + "M" + (x + 1) + " " + (y + 2) + "Q" + (x + 10) + " " + (y + 10) + " " + (x + 1) + " " + (y + 18) +
+    "M" + x + " " + (y + 20);
+}
+// thermal overload element (NEMA heater), as on the reference: two loops back
+// to back. The first starts where the line ends, swings round past the far
+// side and stops; the second starts just past it and swings round to where the
+// line carries on. From (x, y), ends at y + 20.5.
+function THERM(x, y) {
+  return "A5 5 0 1 1 " + (x - 4.33) + " " + (y + 7.5) +
+    "M" + (x + 4.33) + " " + (y + 13) + "A5 5 0 1 0 " + x + " " + (y + 20.5);
+}
+// magnetic overload element: a wide zigzag, drawn down from (x, y), ends at y + 16
+function MAG(x, y) { return "l-7 3l14 5l-14 5l7 3"; }
+// Moves a symbol up (negative) or down (positive)
+function SHIFT(dy, body) { return '<g transform="translate(0 ' + dy + ')">' + body + "</g>"; }
+// Switch terminals: circles at x = 38 and 82 with leads out to the edges, at height y
+function TERMS(y) {
+  return '<path d="M5 ' + y + 'H33M87 ' + y + 'H115"/><circle cx="38" cy="' + y + '" r="5"/><circle cx="82" cy="' + y + '" r="5"/>';
+}
+// Blades for terminals at y = 18 (open: angled down under the right terminal)
+// and y = 24 (closed: across the top of the right terminal)
+var BLADE_NO = '<path d="M42.5 20L86 42"/>';
+var BLADE_NC = '<path d="M43 24L88 19"/>';
+var VBOX = '<path d="M118 22H80V58H118"/>'; // edge of a valve box, for actuators
+var CYL2 = '<rect x="10" y="25" width="70" height="30"/><path d="M38 25V55M38 40H112M22 55V70M68 55V70"/>';
+var CHECK = '<path d="M8 40H50M50 40L72 24M50 40L72 56M75 40H112"/><circle cx="66" cy="40" r="9"/>';
+var FILTER = '<path d="M60 15L85 40L60 65L35 40ZM8 40H35M85 40H112"/><path d="M60 19V61" stroke-dasharray="5 4"/>';
+var GAUGE = '<circle cx="60" cy="34" r="22"/><path d="M60 56V74"/>' + arrow(46, 48, 74, 20);
+var FLOW = '<path d="M8 40H112M48 28Q60 38 72 28M48 52Q60 42 72 52"/>' + arrow(44, 62, 78, 18);
+var SYMBOLS = {
+  elec: [
+    ["Normally open contact", "NO: closes when the coil or device is on", '<path d="M5 40H45M45 20V60M75 20V60M75 40H115"/>'],
+    ["Normally closed contact", "NC: opens when the coil or device is on", '<path d="M5 40H45M45 20V60M75 20V60M75 40H115M36 64L84 16"/>'],
+    ["Relay / contactor coil", "Labeled CR, M, etc.", '<path d="M5 40H40M80 40H115"/><circle cx="60" cy="40" r="20"/>' + txt(60, 40, "CR", 15)],
+    ["Motor", "", '<path d="M5 40H38M82 40H115"/><circle cx="60" cy="40" r="22"/>' + txt(60, 40, "M", 22)],
+    ["Pushbutton, NO", "Momentary, closes when pressed",
+      '<path d="M5 55H34M86 55H115M30 40H90M60 40V18M50 18H70"/><circle cx="38" cy="55" r="4"/><circle cx="82" cy="55" r="4"/>'],
+    ["Pushbutton, NC", "Momentary, opens when pressed",
+      '<path d="M5 40H34M86 40H115M30 46H90M60 46V14M50 14H70"/><circle cx="38" cy="40" r="4"/><circle cx="82" cy="40" r="4"/>'],
+    ["Fuse", "", '<path d="M5 40H115"/><rect x="35" y="30" width="50" height="20"/>'],
+    ["Disconnect", "3-pole, operated together", POLES(function (x) {
+      return '<path d="M' + x + ' 4V30M' + x + ' 50V76M' + x + ' 50L' + (x + 8) + ' 31"/>';
+    }, 41)],
+    ["Circuit interrupter", "3-pole", POLES(function (x) {
+      return '<path d="M' + x + ' 4V28' + ARC(x, 28) + 'V76"/>';
+    }, 38)],
+    ["Circuit breaker, thermal OL", "Trips on overload heat", POLES(function (x) {
+      return '<path d="M' + x + ' 2V16' + ARC(x, 16) + 'V50' + THERM(x, 50) + 'V78"/>';
+    }, 26)],
+    ["Circuit breaker, magnetic OL", "Trips on high current", POLES(function (x) {
+      return '<path d="M' + x + ' 2V16' + ARC(x, 16) + 'V50' + MAG(x, 50) + 'V78"/>';
+    }, 26)],
+    ["Circuit breaker, thermal + magnetic OL", "Trips on overload or high current", POLES(function (x) {
+      return '<path d="M' + x + ' 2V16' + ARC(x, 16) + 'V40' + THERM(x, 40) + 'V62' + MAG(x, 62) + 'V78"/>';
+    }, 26)],
+    ["Pilot light", "Letter shows the color, e.g. R, G", '<path d="M5 40H42M78 40H115M47 27L41 21M73 27L79 21M47 53L41 59M73 53L79 59"/><circle cx="60" cy="40" r="18"/>' + txt(60, 40, "R", 16)],
+    ["Ground", "", '<path d="M60 10V40M36 40H84M44 50H76M52 60H68"/>'],
+    ["Transformer", "", '<path d="M20 12H40a7 7 0 0 1 0 14a7 7 0 0 1 0 14a7 7 0 0 1 0 14a7 7 0 0 1 0 14H20' +
+      'M100 12H80a7 7 0 0 0 0 14a7 7 0 0 0 0 14a7 7 0 0 0 0 14a7 7 0 0 0 0 14H100M57 10V70M63 10V70"/>'],
+    ["Resistor", "", '<path d="M5 40H30L35 28L45 52L55 28L65 52L75 28L85 52L90 40H115"/>'],
+    ["Capacitor", "", '<path d="M5 40H54M54 22V58M66 22V58M66 40H115"/>'],
+    ["Diode", "Current flows toward the bar", '<path d="M5 40H45M75 22V58M75 40H115"/><path d="M45 22V58L75 40Z" fill="currentColor"/>'],
+    ["Limit switch, NO", "", TERMS(26) + '<path d="M42.5 28L84 52M42.5 28L70 54L73 45.4"/>'],
+    ["Limit switch, NO held closed", "", SHIFT(-4, TERMS(30) + '<path d="M43 31L82 35M43 31L72 43L73 34.1"/>')],
+    ["Limit switch, NC", "", TERMS(40) + '<path d="M43 39L87 31M43 40L73 44V33.6"/>'],
+    ["Limit switch, NC held open", "", SHIFT(-4, TERMS(44) + '<path d="M43 44H72V33.7M43 44L88 28"/>')],
+    ["Foot switch, NO", "", SHIFT(-4, TERMS(52) + '<path d="M42.5 49.9L81.6 33.2M55.7 37.7L66.7 34.3L67.9 39.1"/>')],
+    ["Foot switch, NC", "", SHIFT(8, TERMS(40) + '<path d="M43 40L79.5 44.3M58.7 35.3L70.1 37.5L70.7 43.2"/>')],
+    ["Pressure / vacuum switch, NO", "", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V50M54 64H74A10 14 0 0 0 54 64"/>')],
+    ["Pressure / vacuum switch, NC", "", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21.7V52M54 66H74A10 14 0 0 0 54 66"/>')],
+    ["Liquid level switch, NO", "", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V48"/><circle cx="64" cy="58" r="10"/>')],
+    ["Liquid level switch, NC", "", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21.7V50"/><circle cx="64" cy="60" r="10"/>')],
+    ["Temperature switch, NO", "", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V40H71V48H57V56H64V64"/>')],
+    ["Temperature switch, NC", "", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21.7V40H71V48H57V56H64V64"/>')],
+    ["Flow switch, NO", "Air, water, etc.", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V62H76L64 42"/>')],
+    ["Flow switch, NC", "Air, water, etc.", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21.7V60H76L64 40"/>')]
+  ],
+  pneu: [
+    ["Pressure source", "Air supply", '<circle cx="46" cy="40" r="14"/><circle cx="46" cy="40" r="3" fill="currentColor"/><path d="M60 40H112"/>'],
+    ["Compressor", "", '<circle cx="60" cy="42" r="22"/><path d="M60 20V5M14 42H38"/><path d="M52 31H68L60 20Z"/>'],
+    ["Exhaust", "Port vents to the air", '<path d="M60 8V30M48 30H72L60 50Z"/>'],
+    ["Silencer", "", '<path d="M60 8V26M52 36H68M52 44H68M52 52H68"/><rect x="47" y="26" width="26" height="34"/>'],
+    ["Single-acting cylinder", "Spring return", '<rect x="10" y="25" width="70" height="30"/><path d="M38 25V55M38 40H112M22 55V70"/>' +
+      '<path d="M42 31L48 49L54 31L60 49L66 31L72 49L78 31"/>'],
+    ["Double-acting cylinder", "", CYL2],
+    ["Filter", "", FILTER],
+    ["Lubricator", "", '<path d="M60 15L85 40L60 65L35 40ZM8 40H35M85 40H112M60 26V44"/><path d="M55 44H65L60 52Z" fill="currentColor"/>'],
+    ["Pressure gauge", "", GAUGE],
+    ["Air motor", "", '<circle cx="60" cy="42" r="22"/><path d="M60 20V5M82 42H110"/><path d="M52 20H68L60 31Z"/>'],
+    ["Pressure regulator", "Holds outlet pressure steady", '<rect x="40" y="20" width="40" height="40"/><path d="M60 60V72M60 20V8M80 40H84"/>' +
+      arrow(60, 54, 60, 26) + spring(84, 40) + '<path d="M60 14H30V40H40" stroke-dasharray="5 4"/>'],
+    ["Check valve", "Lets air flow one way only", CHECK],
+    ["Flow control", "Adjustable restrictor", FLOW]
+  ],
+  dir: [
+    ["2/2 valve", "2 ports, 2 positions. Normally closed",
+      box2() + '<path d="M75 20V8M75 50V62"/>' + block(75, 20, false) + block(75, 50, true) + arrow(45, 48, 45, 22) + ends2()],
+    ["3/2 valve", "3 ports, 2 positions. Normally closed",
+      box2() + '<path d="M75 20V8M68 50V62M82 50V62"/>' +
+      arrow(75, 22, 82, 48) + block(68, 48, true) + arrow(38, 48, 45, 22) + block(52, 48, true) + ends2()],
+    ["4/2 valve", "4 ports, 2 positions",
+      box2() + '<path d="M68 20V8M82 20V8M68 50V62M82 50V62"/>' +
+      arrow(38, 48, 38, 22) + arrow(52, 22, 52, 48) + arrow(68, 48, 82, 22) + arrow(68, 22, 82, 48) + ends2()],
+    ["5/2 valve", "5 ports, 2 positions",
+      box2() + '<path d="M68 20V8M82 20V8M64 50V62M75 50V62M86 50V62"/>' +
+      arrow(75, 48, 82, 22) + arrow(68, 22, 64, 48) + block(86, 48, true) +
+      arrow(45, 48, 38, 22) + arrow(52, 22, 56, 48) + block(34, 48, true) + ends2()],
+    ["4/3 valve, closed center", "All ports blocked in the center",
+      box3() + '<path d="M55 25V12M65 25V12M55 51V64M65 51V64"/>' +
+      arrow(31, 49, 31, 27) + arrow(41, 27, 41, 49) +
+      block(55, 25, false, 3) + block(65, 25, false, 3) + block(55, 51, true, 3) + block(65, 51, true, 3) +
+      arrow(79, 49, 89, 27) + arrow(79, 27, 89, 49) + ends3()],
+    ["5/3 valve, closed center", "All ports blocked in the center",
+      box3() + ports5() + outer5() +
+      block(55, 25, false, 3) + block(65, 25, false, 3) + block(52, 51, true, 3) + block(60, 51, true, 3) + block(68, 51, true, 3) + ends3()],
+    ["5/3 valve, pressure center", "Air to both A and B in the center",
+      box3() + ports5() + outer5() +
+      arrow(60, 49, 55, 27) + arrow(60, 49, 65, 27) + block(52, 51, true, 3) + block(68, 51, true, 3) + ends3()],
+    ["5/3 valve, open center", "A and B vent to exhaust in the center",
+      box3() + ports5() + outer5() +
+      arrow(55, 27, 52, 49) + arrow(65, 27, 68, 49) + block(60, 51, true, 3) + ends3()]
+  ],
+  act: [
+    ["Manual (general)", "Operated by hand", VBOX + CB + '<path d="M60 31V49M60 40H66"/>'],
+    ["Pushbutton", "", VBOX + CB + '<path d="M66 40H61M61 31a9 9 0 0 0 0 18Z"/>'],
+    ["Lever", "", VBOX + CB + '<path d="M58 54L67 26"/><circle cx="68.2" cy="22.2" r="3.5"/>'],
+    ["Pedal", "Foot operated", VBOX + CB + '<path d="M56 52L63 33H66"/>'],
+    ["Mechanical", "Plunger or roller, pressed by a cam or moving part", VBOX + CB + '<path d="M66 40H64"/><circle cx="59" cy="40" r="5"/>'],
+    ["Spring", "Returns the valve to rest", VBOX + '<path d="M80 40l-4 -6l-4 12l-4 -12l-4 12l-4 -12l-4 12l-4 -6"/>'],
+    ["Detent", "Holds the valve where it's put", VBOX + '<path d="M60 46H80M64 46l3 -6l3 6M70 46l3 -6l3 6"/>' + arrow(70, 26, 70, 39)],
+    ["Solenoid", "Electrically operated", VBOX + solenoid(80, 40)],
+    ["Internal pilot", "Air from inside the valve", VBOX + PILOT],
+    ["External pilot", "Air from a separate line (dashed)", VBOX + '<path d="M30 40H66" stroke-dasharray="5 4"/>' + PILOT],
+    ["Hydraulic pilot", "Shifted by oil pressure", VBOX + '<path d="M30 40H66" stroke-dasharray="5 4"/>' +
+      '<rect x="66" y="32" width="14" height="16"/><path d="M69 35L78 40L69 45Z" fill="currentColor"/>'],
+    ["Solenoid + pilot", "Solenoid shifts a pilot that moves the valve", VBOX + solenoid(66, 40) + PILOT],
+    ["Lever, spring return", "Lever shifts it; spring returns it",
+      // both on the same end: lever box on top, spring underneath
+      '<path d="M118 18H80V62H118"/><path d="M63 26H80M52 42H80M52 42L63 17"/><circle cx="65" cy="12.5" r="4.5"/>' +
+      '<path d="M64 46L67 60L71.5 50L76 60L80 46"/>'],
+    ["Solenoid + pilot, manual override", "Can also be shifted by hand",
+      // solenoid and pilot side by side on top; a wider override box underneath,
+      // its left edge running a little past the top and bottom
+      VBOX + '<path d="M56 40V22H80M68 22V40M56 40L68 22M71 26L78 31L71 36Z"/>' +
+      '<path d="M50 38V61M50 40H80M50 58H80"/>']
+  ],
+  hyd: [
+    ["Pump", "Fixed displacement", '<circle cx="60" cy="42" r="22"/><path d="M60 20V5M14 42H38"/><path d="M52 31H68L60 20Z" fill="currentColor"/>'],
+    ["Hydraulic motor", "", '<circle cx="60" cy="42" r="22"/><path d="M60 20V5M82 42H110"/><path d="M52 20H68L60 31Z" fill="currentColor"/>'],
+    ["Tank / reservoir", "", '<path d="M38 42V66H82V42M60 8V58"/>'],
+    ["Double-acting cylinder", "", CYL2],
+    ["Filter", "", FILTER],
+    ["Accumulator", "Gas charged", '<rect x="44" y="12" width="32" height="52" rx="16"/><path d="M44 38H76M60 64V76M54 22H66L60 31Z"/>'],
+    ["Pressure gauge", "", GAUGE],
+    ["Lines", "Working, pilot, drain", '<path d="M8 18H112"/><path d="M8 40H112" stroke-dasharray="10 6"/><path d="M8 62H112" stroke-dasharray="4 4"/>'],
+    ["Relief valve", "Opens to tank above its setting", '<rect x="40" y="20" width="40" height="40"/><path d="M60 60V72M60 20V8M80 40H84"/>' +
+      arrow(50, 54, 50, 26) + spring(84, 40) + '<path d="M60 66H30V40H40" stroke-dasharray="5 4"/>'],
+    ["Check valve", "Lets oil flow one way only", CHECK],
+    ["Flow control", "Adjustable restrictor", FLOW]
+  ]
+};
+// A grid of symbol cards; multi-position valves get a full-width card
+function symGrid(list) {
+  var h = '<div class="syms">';
+  list.forEach(function (sy) {
+    var wide = /^\d\/\d valve/.test(sy[0]);
+    var art = typeof sy[2] === "object"
+      ? '<div class="symimg" role="img" aria-label="' + sy[0] + '" style="-webkit-mask-image:url(' + sy[2].img +
+        ');mask-image:url(' + sy[2].img + ')"></div>'
+      : '<svg viewBox="0 0 120 80" fill="none" stroke="currentColor" stroke-width="1.25" ' +
+        'stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="' + sy[0] + '">' + sy[2] + "</svg>";
+    h += '<div class="sym' + (wide ? " wide" : "") + '">' + art + "<b>" +
+      sy[0] + "</b>" + (sy[1] ? "<span>" + sy[1] + "</span>" : "") + "</div>";
+  });
+  return h + "</div>";
+}
+
+// ---- Valves page: all valve symbols and their actuators, in sections ----
+var VALVE_SECTIONS = [
+  ["Directional valves", "dir", "Each box is one position. The first number is ports, the second is positions."],
+  ["Actuators", "act", "How a valve is shifted. Drawn against the side of the valve box."]
+];
+function renderSymbols() {
+  var card = document.createElement("div");
+  card.className = "card";
+  if (["elec", "pneu", "hyd", "valves"].indexOf(S.c9.k) < 0) S.c9.k = "elec";
+  card.appendChild(seg("Type", [["elec", "Electrical"], ["pneu", "Pneumatic"], ["hyd", "Hydraulic"], ["valves", "Valves"]], S.c9.k, function (v) {
+    S.c9.k = v; save(); render();
+  }));
+  var box = document.createElement("div");
+  if (S.c9.k === "valves") {
+    // Valves are shown in sections: directional, actuators, pressure, flow
+    box.innerHTML = VALVE_SECTIONS.map(function (sec) {
+      return '<h2 class="sechead">' + sec[0] + "</h2>" + (sec[2] ? '<p class="secnote">' + sec[2] + "</p>" : "") +
+        symGrid(SYMBOLS[sec[1]]);
+    }).join('<div class="secgap"></div>');
+  } else box.innerHTML = symGrid(SYMBOLS[S.c9.k]);
+  card.appendChild(box);
+  app.appendChild(card);
+
+  var about = document.createElement("details");
+  about.className = "card about";
+  about.open = true;
+  about.innerHTML = "<summary>Notes</summary>" + (S.c9.k === "elec" ?
+    "<p>Electrical symbols are drawn in the NEMA / ANSI ladder style used on most US drawings. " +
+    "IEC drawings use different shapes for some parts, for example a rectangle for a coil.</p>" : S.c9.k === "valves" ?
+    "<p>Valve symbols follow ISO 1219 for both air and hydraulics. The box next to the spring (or the center " +
+    "box on a 3-position valve) is the resting position; ports are drawn on that box.</p>" +
+    "<p>A valve can combine actuators, for example solenoid on one side and spring return on the other. " +
+    "Hollow pilot triangles mean air; filled ones mean oil.</p>" :
+    "<p>Pneumatic and hydraulic symbols follow ISO 1219. Hollow triangles mean air; filled triangles mean " +
+    "hydraulic oil. Directional valves and actuators are under Valves above.</p>") +
+    "<p>These are simplified. Always check the legend on the drawing you're working from.</p>";
+  app.appendChild(about);
+  setBar(["", ""]);
+}
+
 function render() {
+  // The old Valves page now lives on the Symbols page
+  if (S.tab === 10) { S.tab = 9; S.c9.k = "valves"; }
+  for (var g in S.last) if (S.last[g] === 10 || groupOf(S.last[g]) !== g) S.last[g] = DEF.last[g];
   invalid = {};
   clearTimeout(histT);
   var grp = groupOf(S.tab);
@@ -950,6 +1273,7 @@ function render() {
   app.innerHTML = "";
   histBox = null;
   if (S.tab === 5) { renderWires(); return; }
+  if (S.tab === 9) { renderSymbols(); return; }
   var c = "c" + S.tab;
   var card = document.createElement("div");
   card.className = "card";
