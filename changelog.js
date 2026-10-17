@@ -1,6 +1,11 @@
 // What's New. Add a new entry at the top with every version (same number as version.js).
 // Keep each line short and in plain words: what changed for the person using the app.
 var CHANGELOG = [
+  { v: "v77", d: "10/17/2026", n: [
+    "Favorites: tap the star at the top of any page to keep it in the new Favorites group",
+    "History has a Share button that sends or copies the list as text",
+    "Symbol names use Title Case, and the PNP/NPN drawings read BK Out"
+  ] },
   { v: "v75", d: "10/17/2026", n: [
     "Robot is now ABB Robot",
     "Orientation paste box: [q1, q2, q3, q4] shown under the label"

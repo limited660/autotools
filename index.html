@@ -599,7 +599,15 @@ html.nozoom #app { touch-action: pan-y; }
 .hist .hin { font-size: 14px; color: var(--muted); margin-top: 2px; }
 .hist .htime { font-size: 13px; color: var(--muted); white-space: nowrap; text-align: right; line-height: 1.35; }
 .hist .hempty { color: var(--muted); font-size: 15px; text-align: center; margin: 0; }
-.hist .hclear { display: block; margin: 8px auto 0; }
+.hist .hbtnrow { display: flex; justify-content: center; gap: 18px; margin-top: 8px; }
+.hbtns { display: flex; gap: 8px; align-items: center; }
+#star { border: 0; background: var(--card); color: var(--muted); box-shadow: var(--shadow); border-radius: 999px;
+  width: 36px; height: 34px; font-size: 18px; line-height: 1; cursor: pointer; }
+#star.on { color: var(--accent-ink, var(--accent)); }
+#star[hidden] { display: none; }
+.favempty { text-align: center; }
+.favempty b { display: block; font-size: 18px; margin-bottom: 6px; }
+.favempty p { margin: 0; color: var(--muted); }
 .warnrow { color: var(--error); font-weight: 600; font-size: 15px; margin-top: 10px; text-align: center; }
 
 /* ---- Small "Copied" message ---- */
@@ -698,7 +706,7 @@ footer { padding-bottom: calc(var(--nav-h) + 40px + env(safe-area-inset-bottom))
 <body>
 <header>
   <h1 id="title">Automation Tools</h1>
-  <button id="theme" type="button"></button>
+  <div class="hbtns"><button id="star" type="button"></button><button id="theme" type="button"></button></div>
 </header>
 <div id="pages" role="tablist"></div>
 <div id="bar"></div>
@@ -712,6 +720,9 @@ footer { padding-bottom: calc(var(--nav-h) + 40px + env(safe-area-inset-bottom))
   </div>
 </div>
 <nav role="tablist">
+  <button role="tab" data-group="fav">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>
+    Favorites</button>
   <button role="tab" data-group="conv">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="13" width="20" height="5" rx="2.5"/><circle cx="5.5" cy="15.5" r="1"/><circle cx="18.5" cy="15.5" r="1"/><rect x="8" y="6" width="8" height="7" rx="1"/></svg>
     Conveyor</button>
@@ -764,6 +775,8 @@ var DEF = {
   c7: { t: "ma", m: "s2v", sl: 0, sh: 27648, ml: 4, mh: 20, vl: 0, vh: 10, el: 0, eh: 100, sig: 12, val: 50 },
   c8: { u: "in", x: 4, ppr: 1024, D: 4, dist: 12, f: 100 },
   hist: {},
+  favs: [], // starred pages (tab numbers)
+  inFav: false, // browsing through the Favorites group
   last: { conv: 1, ctrl: 7, ref: 5, robot: 4 }, // last page opened in each group
   c9: { k: "elec" },
   c11: { mask: "255.255.255.0", ip: "" },
@@ -789,6 +802,8 @@ try {
     if (saved.hist) S.hist = saved.hist;
     if (saved.last) for (var g in S.last) if (saved.last[g]) S.last[g] = saved.last[g];
     if (saved.seenVer) S.seenVer = saved.seenVer;
+    if (Array.isArray(saved.favs)) S.favs = saved.favs;
+    if (saved.inFav) S.inFav = true;
   }
 } catch (e) {}
 function save() {
@@ -939,6 +954,13 @@ function applyTheme() {
   themeBtn.textContent = { auto: "◐ Auto", light: "☀ Light", dark: "☾ Dark" }[S.theme];
   themeBtn.setAttribute("aria-label", "Theme: " + S.theme + ". Tap to change.");
 }
+document.getElementById("star").onclick = function () {
+  var i = S.favs.indexOf(S.tab);
+  if (i >= 0) S.favs.splice(i, 1); else S.favs.push(S.tab);
+  save();
+  render();
+  toast(i >= 0 ? "Removed from Favorites" : "Added to Favorites");
+};
 themeBtn.onclick = function () {
   S.theme = { auto: "light", light: "dark", dark: "auto" }[S.theme];
   save();
@@ -1639,7 +1661,7 @@ function sensorDiagram(pnp) {
     lead("M120 112H155V152", BU) + dot(155, 152, BLU) +
     lead("M120 86H210", BK) +
     (pnp ? stripe("M210 " + com + "H185V152") + dot(185, 152, BLU) : w("M210 " + com + "H185V20", BLU) + dot(185, 20, BLU)) +
-    term(120, 64, "BN +", 1) + term(120, 86, "BK out", 1) + term(120, 112, "BU 0V", 1) +
+    term(120, 64, "BN +", 1) + term(120, 86, "BK Out", 1) + term(120, 112, "BU 0V", 1) +
     term(210, 86, "IN") + term(210, com, "COM") + "</svg>";
 }
 // [name, what it is]
@@ -1785,6 +1807,29 @@ var GROUPS = {
   ref: [[5, "Wiring"], [12, "AWG"], [9, "Symbols"], [14, "Tap Drill"], [15, "PF525"]],
   robot: [[4, "Orientation"], [18, "Offsets"], [19, "Speed Zone"], [20, "RAPID"]]
 };
+// ---- Favorites: starred pages gathered into their own group (page 0 is the empty Favorites page) ----
+function pageName(t) {
+  for (var g in GROUPS) if (g !== "fav") {
+    var pg = GROUPS[g].find(function (x) { return x[0] === t; });
+    if (pg) return pg[1];
+  }
+  return "";
+}
+function syncFavs() {
+  S.favs = S.favs.filter(function (t) { return t !== 0 && pageName(t); }); // drop pages that no longer exist
+  GROUPS.fav = S.favs.length ? S.favs.map(function (t) { return [t, pageName(t)]; }) : [[0, "Favorites"]];
+}
+function curGroup() { return S.inFav ? "fav" : groupOf(S.tab); }
+function openGroup(g) {
+  if (g === "fav") {
+    S.inFav = true;
+    syncFavs();
+    openTab(S.favs.indexOf(S.tab) >= 0 ? S.tab : GROUPS.fav[0][0]);
+  } else {
+    S.inFav = false;
+    openTab(S.last[g]);
+  }
+}
 function groupOf(t) {
   for (var g in GROUPS) if (GROUPS[g].some(function (x) { return x[0] === t; })) return g;
   return "conv";
@@ -1894,9 +1939,9 @@ var GAUGE = '<circle cx="60" cy="34" r="22"/><path d="M60 56V74"/>' + arrow(46, 
 var FLOW = '<path d="M8 40H112M48 28Q60 38 72 28M48 52Q60 42 72 52"/>' + arrow(44, 62, 78, 18);
 var SYMBOLS = {
   elec: [
-    ["Normally open contact", "NO: closes when the coil or device is on", '<path d="M5 40H45M45 20V60M75 20V60M75 40H115"/>'],
-    ["Normally closed contact", "NC: opens when the coil or device is on", '<path d="M5 40H45M45 20V60M75 20V60M75 40H115M36 64L84 16"/>'],
-    ["Relay / contactor coil", "Labeled CR, M, etc.", '<path d="M5 40H40M80 40H115"/><circle cx="60" cy="40" r="20"/>' + txt(60, 40, "CR", 15)],
+    ["Normally Open Contact", "NO: closes when the coil or device is on", '<path d="M5 40H45M45 20V60M75 20V60M75 40H115"/>'],
+    ["Normally Closed Contact", "NC: opens when the coil or device is on", '<path d="M5 40H45M45 20V60M75 20V60M75 40H115M36 64L84 16"/>'],
+    ["Relay / Contactor Coil", "Labeled CR, M, etc.", '<path d="M5 40H40M80 40H115"/><circle cx="60" cy="40" r="20"/>' + txt(60, 40, "CR", 15)],
     ["Motor", "Driven by the circuit; label shows the motor number", '<path d="M5 40H38M82 40H115"/><circle cx="60" cy="40" r="22"/>' + txt(60, 40, "M", 22)],
     ["Pushbutton, NO", "Momentary, closes when pressed",
       '<path d="M5 55H34M86 55H115M30 40H90M60 40V18M50 18H70"/><circle cx="38" cy="55" r="4"/><circle cx="82" cy="55" r="4"/>'],
@@ -1906,47 +1951,47 @@ var SYMBOLS = {
     ["Disconnect", "3-pole, operated together", POLES(function (x) {
       return '<path d="M' + x + ' 4V30M' + x + ' 50V76M' + x + ' 50L' + (x + 8) + ' 31"/>';
     }, 41)],
-    ["Circuit breaker", "3-pole", POLES(function (x) {
+    ["Circuit Breaker", "3-pole", POLES(function (x) {
       return '<path d="M' + x + ' 4V28' + ARC(x, 28) + 'V76"/>';
     }, 38)],
-    ["Circuit breaker, thermal OL", "Trips on overload heat", POLES(function (x) {
+    ["Circuit Breaker, Thermal OL", "Trips on overload heat", POLES(function (x) {
       return '<path d="M' + x + ' 2V16' + ARC(x, 16) + 'V50' + THERM(x, 50) + 'V78"/>';
     }, 26)],
-    ["Circuit breaker, magnetic OL", "Trips on high current", POLES(function (x) {
+    ["Circuit Breaker, Magnetic OL", "Trips on high current", POLES(function (x) {
       return '<path d="M' + x + ' 2V16' + ARC(x, 16) + 'V50' + MAG(x, 50) + 'V78"/>';
     }, 26)],
-    ["Circuit breaker, thermal + magnetic OL", "Trips on overload or high current", POLES(function (x) {
+    ["Circuit Breaker, Thermal + Magnetic OL", "Trips on overload or high current", POLES(function (x) {
       return '<path d="M' + x + ' 2V16' + ARC(x, 16) + 'V40' + THERM(x, 40) + 'V62' + MAG(x, 62) + 'V78"/>';
     }, 26)],
-    ["Pilot light", "Letter shows the color, e.g. R, G", '<path d="M5 40H42M78 40H115M47 27L41 21M73 27L79 21M47 53L41 59M73 53L79 59"/><circle cx="60" cy="40" r="18"/>' + txt(60, 40, "R", 16)],
+    ["Pilot Light", "Letter shows the color, e.g. R, G", '<path d="M5 40H42M78 40H115M47 27L41 21M73 27L79 21M47 53L41 59M73 53L79 59"/><circle cx="60" cy="40" r="18"/>' + txt(60, 40, "R", 16)],
     ["Ground", "Connection to earth or the machine frame", '<path d="M60 10V40M36 40H84M44 50H76M52 60H68"/>'],
     ["Transformer", "Steps voltage up or down, e.g. 480 V to 120 V", '<path d="M20 12H40a7 7 0 0 1 0 14a7 7 0 0 1 0 14a7 7 0 0 1 0 14a7 7 0 0 1 0 14H20' +
       'M100 12H80a7 7 0 0 0 0 14a7 7 0 0 0 0 14a7 7 0 0 0 0 14a7 7 0 0 0 0 14H100M57 10V70M63 10V70"/>'],
     ["Resistor", "Limits current", '<path d="M5 40H30L35 28L45 52L55 28L65 52L75 28L85 52L90 40H115"/>'],
     ["Capacitor", "Stores charge; filters or delays", '<path d="M5 40H54M54 22V58M66 22V58M66 40H115"/>'],
     ["Diode", "Current flows toward the bar", '<path d="M5 40H45M75 22V58M75 40H115"/><path d="M45 22V58L75 40Z" fill="currentColor"/>'],
-    ["Limit switch, NO", "Closes when the machine part hits it", TERMS(26) + '<path d="M42.5 28L84 52M42.5 28L70 54L73 45.4"/>'],
-    ["Limit switch, NO held closed", "Shown already pressed by the machine at rest", SHIFT(-4, TERMS(30) + '<path d="M43 31L88 35.7M43 31L72 43L73 34.1"/>')],
-    ["Limit switch, NC", "Opens when the machine part hits it", TERMS(40) + '<path d="M43 39L88 34.4M43 40L73 44V35.9"/>'],
-    ["Limit switch, NC held open", "Shown already pressed by the machine at rest", SHIFT(-4, TERMS(44) + '<path d="M43 44H72V33.7M43 44L88 28"/>')],
-    ["Foot switch, NO", "Closes when the pedal is pressed", SHIFT(-4, TERMS(52) + '<path d="M42.5 49.9L81.6 33.2M55.7 37.7L66.7 34.3L67.9 39.1"/>')],
-    ["Foot switch, NC", "Opens when the pedal is pressed", SHIFT(8, TERMS(40) + '<path d="M43 40L88 45.8M58.7 35.3L70.1 37.5L70.7 43.6"/>')],
-    ["Pressure / vacuum switch, NO", "Closes when pressure reaches its setting", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V50M54 64H74A10 14 0 0 0 54 64"/>')],
-    ["Pressure / vacuum switch, NC", "Opens when pressure reaches its setting", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V52M54 66H74A10 14 0 0 0 54 66"/>')],
-    ["Liquid level switch, NO", "Float closes it when the level rises", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V48"/><circle cx="64" cy="58" r="10"/>')],
-    ["Liquid level switch, NC", "Float opens it when the level rises", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V50"/><circle cx="64" cy="60" r="10"/>')],
-    ["Temperature switch, NO", "Closes when it gets hot enough", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V40H71V48H57V56H64V64"/>')],
-    ["Temperature switch, NC", "Opens when it gets hot enough", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V40H71V48H57V56H64V64"/>')],
-    ["Flow switch, NO", "Air, water, etc.", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V62H76L64 42"/>')],
-    ["Flow switch, NC", "Air, water, etc.", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V60H76L64 40"/>')],
+    ["Limit Switch, NO", "Closes when the machine part hits it", TERMS(26) + '<path d="M42.5 28L84 52M42.5 28L70 54L73 45.4"/>'],
+    ["Limit Switch, NO Held Closed", "Shown already pressed by the machine at rest", SHIFT(-4, TERMS(30) + '<path d="M43 31L88 35.7M43 31L72 43L73 34.1"/>')],
+    ["Limit Switch, NC", "Opens when the machine part hits it", TERMS(40) + '<path d="M43 39L88 34.4M43 40L73 44V35.9"/>'],
+    ["Limit Switch, NC Held Open", "Shown already pressed by the machine at rest", SHIFT(-4, TERMS(44) + '<path d="M43 44H72V33.7M43 44L88 28"/>')],
+    ["Foot Switch, NO", "Closes when the pedal is pressed", SHIFT(-4, TERMS(52) + '<path d="M42.5 49.9L81.6 33.2M55.7 37.7L66.7 34.3L67.9 39.1"/>')],
+    ["Foot Switch, NC", "Opens when the pedal is pressed", SHIFT(8, TERMS(40) + '<path d="M43 40L88 45.8M58.7 35.3L70.1 37.5L70.7 43.6"/>')],
+    ["Pressure / Vacuum Switch, NO", "Closes when pressure reaches its setting", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V50M54 64H74A10 14 0 0 0 54 64"/>')],
+    ["Pressure / Vacuum Switch, NC", "Opens when pressure reaches its setting", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V52M54 66H74A10 14 0 0 0 54 66"/>')],
+    ["Liquid Level Switch, NO", "Float closes it when the level rises", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V48"/><circle cx="64" cy="58" r="10"/>')],
+    ["Liquid Level Switch, NC", "Float opens it when the level rises", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V50"/><circle cx="64" cy="60" r="10"/>')],
+    ["Temperature Switch, NO", "Closes when it gets hot enough", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V40H71V48H57V56H64V64"/>')],
+    ["Temperature Switch, NC", "Opens when it gets hot enough", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V40H71V48H57V56H64V64"/>')],
+    ["Flow Switch, NO", "Air, water, etc.", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V62H76L64 42"/>')],
+    ["Flow Switch, NC", "Air, water, etc.", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V60H76L64 40"/>')],
     // photo-eyes, drawn after the single-width sensor symbols in common schematic libraries
-    ["Photo-eye, diffuse", "Sees light bouncing back off the part", PE(23, PE_BODY + PE_SW + PE_LEADS +
+    ["Photo-Eye, Diffuse", "Sees light bouncing back off the part", PE(23, PE_BODY + PE_SW + PE_LEADS +
       PE_BIG(17.5, 62.5, 1.15, '<path d="M9 56h2v5H9zM9 64h2v5H9z" fill="currentColor"/>' + PE_ARROWS(12.5) +
       '<path d="M22 56h4v13h-4z"/><path d="M22 60l4-4M22 65l4-4M22 69l4-4"/>'))], // the target, hatched
-    ["Photo-eye, retroreflective", "Sees light bounced back from a reflector", PE(23, PE_BODY + PE_SW + PE_LEADS +
+    ["Photo-Eye, Retroreflective", "Sees light bounced back from a reflector", PE(23, PE_BODY + PE_SW + PE_LEADS +
       PE_BIG(17.5, 62.5, 1.15, '<path d="M10 56h2v5h-2zM10 64h2v5h-2z" fill="currentColor"/>' + PE_ARROWS(13.5) +
       '<path d="M23 56h2v13h-2z"/>'))], // the reflector
-    ["Photo-eye, through-beam", "Transmitter and receiver", PE(4,
+    ["Photo-Eye, Through-Beam", "Transmitter and receiver", PE(4,
       '<path d="M45 25h50v50H45zM8 25h24v50H8z"/>' + PE_EYE(57.5, 30.43) + '<path d="M55 33v9M60 42v-9"/>' +
       PE_EYE(20, 30.43) + '<path d="M17.5 33v9M22.5 42v-9"/>' +
       PE_BIG(57.5, 62.5, 1.4, '<path d="M61 60h2v5h-2zM52 62h7l-4-1v2l4-1" fill="currentColor"/>') + // receiver
@@ -1956,52 +2001,52 @@ var SYMBOLS = {
       '<circle cx="20" cy="25" r="2.5"/><circle cx="20" cy="75" r="2.5"/>')]
   ],
   pneu: [
-    ["Pressure source", "Air supply", '<circle cx="46" cy="40" r="14"/><circle cx="46" cy="40" r="3" fill="currentColor"/><path d="M60 40H112"/>'],
+    ["Pressure Source", "Air supply", '<circle cx="46" cy="40" r="14"/><circle cx="46" cy="40" r="3" fill="currentColor"/><path d="M60 40H112"/>'],
     ["Compressor", "Makes compressed air", '<circle cx="60" cy="42" r="22"/><path d="M60 20V5M14 42H38"/><path d="M52 31H68L60 20Z"/>'],
     ["Exhaust", "Port vents to the air", '<path d="M60 8V30M48 30H72L60 50Z"/>'],
     ["Silencer", "Quiets exhaust air", '<path d="M60 8V26M52 36H68M52 44H68M52 52H68"/><rect x="47" y="26" width="26" height="34"/>'],
-    ["Single-acting cylinder", "Spring return", '<rect x="10" y="25" width="70" height="30"/><path d="M38 25V55M38 40H112M22 55V70"/>' +
+    ["Single-Acting Cylinder", "Spring return", '<rect x="10" y="25" width="70" height="30"/><path d="M38 25V55M38 40H112M22 55V70"/>' +
       '<path d="M42 31L48 49L54 31L60 49L66 31L72 49L78 31"/>'],
-    ["Double-acting cylinder", "Air pushes it both ways", CYL2],
+    ["Double-Acting Cylinder", "Air pushes it both ways", CYL2],
     ["Filter", "Removes dirt and water from the air", FILTER],
     ["Lubricator", "Adds oil mist to the air", '<path d="M60 15L85 40L60 65L35 40ZM8 40H35M85 40H112M60 26V44"/><path d="M55 44H65L60 52Z" fill="currentColor"/>'],
-    ["Pressure gauge", "Shows line pressure", GAUGE],
-    ["Air motor", "Turns air flow into rotation", '<circle cx="60" cy="42" r="22"/><path d="M60 20V5M82 42H110"/><path d="M52 20H68L60 31Z"/>'],
-    ["Pressure regulator", "Holds outlet pressure steady", '<rect x="40" y="20" width="40" height="40"/><path d="M60 60V72M60 20V8M80 40H84"/>' +
+    ["Pressure Gauge", "Shows line pressure", GAUGE],
+    ["Air Motor", "Turns air flow into rotation", '<circle cx="60" cy="42" r="22"/><path d="M60 20V5M82 42H110"/><path d="M52 20H68L60 31Z"/>'],
+    ["Pressure Regulator", "Holds outlet pressure steady", '<rect x="40" y="20" width="40" height="40"/><path d="M60 60V72M60 20V8M80 40H84"/>' +
       arrow(60, 54, 60, 26) + spring(84, 40) + '<path d="M60 14H30V40H40" stroke-dasharray="5 4"/>'],
-    ["Check valve", "Lets air flow one way only", CHECK],
-    ["Flow control", "Adjustable restrictor", FLOW]
+    ["Check Valve", "Lets air flow one way only", CHECK],
+    ["Flow Control", "Adjustable restrictor", FLOW]
   ],
   dir: [
-    ["2/2 valve", "2 ports, 2 positions. Normally closed",
+    ["2/2 Valve", "2 ports, 2 positions. Normally closed",
       box2() + '<path d="M75 20V8M75 50V62"/>' + block(75, 20, false) + block(75, 50, true) + arrow(45, 48, 45, 22) + ends2()],
-    ["3/2 valve", "3 ports, 2 positions. Normally closed",
+    ["3/2 Valve", "3 ports, 2 positions. Normally closed",
       box2() + '<path d="M75 20V8M68 50V62M82 50V62"/>' +
       arrow(75, 22, 82, 48) + block(68, 48, true) + arrow(38, 48, 45, 22) + block(52, 48, true) + ends2()],
-    ["4/2 valve", "4 ports, 2 positions",
+    ["4/2 Valve", "4 ports, 2 positions",
       box2() + '<path d="M68 20V8M82 20V8M68 50V62M82 50V62"/>' +
       arrow(38, 48, 38, 22) + arrow(52, 22, 52, 48) + arrow(68, 48, 82, 22) + arrow(68, 22, 82, 48) + ends2()],
-    ["5/2 valve", "5 ports, 2 positions",
+    ["5/2 Valve", "5 ports, 2 positions",
       box2() + '<path d="M68 20V8M82 20V8M64 50V62M75 50V62M86 50V62"/>' +
       arrow(75, 48, 82, 22) + arrow(68, 22, 64, 48) + block(86, 48, true) +
       arrow(45, 48, 38, 22) + arrow(52, 22, 56, 48) + block(34, 48, true) + ends2()],
-    ["4/3 valve, closed center", "All ports blocked in the center",
+    ["4/3 Valve, Closed Center", "All ports blocked in the center",
       box3() + '<path d="M55 25V12M65 25V12M55 51V64M65 51V64"/>' +
       arrow(31, 49, 31, 27) + arrow(41, 27, 41, 49) +
       block(55, 25, false, 3) + block(65, 25, false, 3) + block(55, 51, true, 3) + block(65, 51, true, 3) +
       arrow(79, 49, 89, 27) + arrow(79, 27, 89, 49) + ends3()],
-    ["5/3 valve, closed center", "All ports blocked in the center",
+    ["5/3 Valve, Closed Center", "All ports blocked in the center",
       box3() + ports5() + outer5() +
       block(55, 25, false, 3) + block(65, 25, false, 3) + block(52, 51, true, 3) + block(60, 51, true, 3) + block(68, 51, true, 3) + ends3()],
-    ["5/3 valve, pressure center", "Air to both A and B in the center",
+    ["5/3 Valve, Pressure Center", "Air to both A and B in the center",
       box3() + ports5() + outer5() +
       arrow(60, 49, 55, 27) + arrow(60, 49, 65, 27) + block(52, 51, true, 3) + block(68, 51, true, 3) + ends3()],
-    ["5/3 valve, open center", "A and B vent to exhaust in the center",
+    ["5/3 Valve, Open Center", "A and B vent to exhaust in the center",
       box3() + ports5() + outer5() +
       arrow(55, 27, 52, 49) + arrow(65, 27, 68, 49) + block(60, 51, true, 3) + ends3()]
   ],
   act: [
-    ["Manual (general)", "Operated by hand", VBOX + CB + '<path d="M60 31V49M60 40H66"/>'],
+    ["Manual (General)", "Operated by hand", VBOX + CB + '<path d="M60 31V49M60 40H66"/>'],
     ["Pushbutton", "Pressed by hand to shift the valve", VBOX + CB + '<path d="M66 40H61M61 31a9 9 0 0 0 0 18Z"/>'],
     ["Lever", "Hand lever shifts the valve", VBOX + CB + '<path d="M58 54L67 26"/><circle cx="68.2" cy="22.2" r="3.5"/>'],
     ["Pedal", "Foot operated", VBOX + CB + '<path d="M56 52L63 33H66"/>'],
@@ -2009,16 +2054,16 @@ var SYMBOLS = {
     ["Spring", "Returns the valve to rest", VBOX + '<path d="M80 40l-4 -6l-4 12l-4 -12l-4 12l-4 -12l-4 12l-4 -6"/>'],
     ["Detent", "Holds the valve where it's put", VBOX + '<path d="M60 46H80M64 46l3 -6l3 6M70 46l3 -6l3 6"/>' + arrow(70, 26, 70, 39)],
     ["Solenoid", "Electrically operated", VBOX + solenoid(80, 40)],
-    ["Internal pilot", "Air from inside the valve", VBOX + PILOT],
-    ["External pilot", "Air from a separate line (dashed)", VBOX + '<path d="M30 40H66" stroke-dasharray="5 4"/>' + PILOT],
-    ["Hydraulic pilot", "Shifted by oil pressure", VBOX + '<path d="M30 40H66" stroke-dasharray="5 4"/>' +
+    ["Internal Pilot", "Air from inside the valve", VBOX + PILOT],
+    ["External Pilot", "Air from a separate line (dashed)", VBOX + '<path d="M30 40H66" stroke-dasharray="5 4"/>' + PILOT],
+    ["Hydraulic Pilot", "Shifted by oil pressure", VBOX + '<path d="M30 40H66" stroke-dasharray="5 4"/>' +
       '<rect x="66" y="32" width="14" height="16"/><path d="M69 35L78 40L69 45Z" fill="currentColor"/>'],
-    ["Solenoid + pilot", "Solenoid shifts a pilot that moves the valve", VBOX + solenoid(66, 40) + PILOT],
-    ["Lever, spring return", "Lever shifts it; spring returns it",
+    ["Solenoid + Pilot", "Solenoid shifts a pilot that moves the valve", VBOX + solenoid(66, 40) + PILOT],
+    ["Lever, Spring Return", "Lever shifts it; spring returns it",
       // both on the same end: lever box on top, spring underneath
       '<path d="M118 18H80V62H118"/><path d="M63 26H80M52 42H80M52 42L63 17"/><circle cx="65" cy="12.5" r="4.5"/>' +
       '<path d="M64 46L67 60L71.5 50L76 60L80 46"/>'],
-    ["Solenoid + pilot, manual override", "Can also be shifted by hand",
+    ["Solenoid + Pilot, Manual Override", "Can also be shifted by hand",
       // solenoid and pilot side by side on top; a wider override box underneath,
       // its left edge running a little past the top and bottom
       VBOX + '<path d="M56 40V22H80M68 22V40M56 40L68 22M71 26L78 31L71 36Z"/>' +
@@ -2026,24 +2071,24 @@ var SYMBOLS = {
   ],
   hyd: [
     ["Pump", "Fixed displacement", '<circle cx="60" cy="42" r="22"/><path d="M60 20V5M14 42H38"/><path d="M52 31H68L60 20Z" fill="currentColor"/>'],
-    ["Hydraulic motor", "Turns oil flow into rotation", '<circle cx="60" cy="42" r="22"/><path d="M60 20V5M82 42H110"/><path d="M52 20H68L60 31Z" fill="currentColor"/>'],
-    ["Tank / reservoir", "Holds oil; return lines end here", '<path d="M38 42V66H82V42M60 8V58"/>'],
-    ["Double-acting cylinder", "Oil pushes it both ways", CYL2],
+    ["Hydraulic Motor", "Turns oil flow into rotation", '<circle cx="60" cy="42" r="22"/><path d="M60 20V5M82 42H110"/><path d="M52 20H68L60 31Z" fill="currentColor"/>'],
+    ["Tank / Reservoir", "Holds oil; return lines end here", '<path d="M38 42V66H82V42M60 8V58"/>'],
+    ["Double-Acting Cylinder", "Oil pushes it both ways", CYL2],
     ["Filter", "Removes dirt from the oil", FILTER],
     ["Accumulator", "Gas charged", '<rect x="44" y="12" width="32" height="52" rx="16"/><path d="M44 38H76M60 64V76M54 22H66L60 31Z"/>'],
-    ["Pressure gauge", "Shows line pressure", GAUGE],
+    ["Pressure Gauge", "Shows line pressure", GAUGE],
     ["Lines", "Working, pilot, drain", '<path d="M8 18H112"/><path d="M8 40H112" stroke-dasharray="10 6"/><path d="M8 62H112" stroke-dasharray="4 4"/>'],
-    ["Relief valve", "Opens to tank above its setting", '<rect x="40" y="20" width="40" height="40"/><path d="M60 60V72M60 20V8M80 40H84"/>' +
+    ["Relief Valve", "Opens to tank above its setting", '<rect x="40" y="20" width="40" height="40"/><path d="M60 60V72M60 20V8M80 40H84"/>' +
       arrow(50, 54, 50, 26) + spring(84, 40) + '<path d="M60 66H30V40H40" stroke-dasharray="5 4"/>'],
-    ["Check valve", "Lets oil flow one way only", CHECK],
-    ["Flow control", "Adjustable restrictor", FLOW]
+    ["Check Valve", "Lets oil flow one way only", CHECK],
+    ["Flow Control", "Adjustable restrictor", FLOW]
   ]
 };
 // A grid of symbol cards; multi-position valves get a full-width card
 function symGrid(list) {
   var h = '<div class="syms">';
   list.forEach(function (sy) {
-    var wide = /^\d\/\d valve/.test(sy[0]);
+    var wide = /^\d\/\d valve/i.test(sy[0]);
     var art = '<svg viewBox="0 0 120 80" fill="none" stroke="currentColor" stroke-width="1.25" ' +
       'stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="' + sy[0] + '">' + sy[2] + "</svg>";
     h += '<div class="sym' + (wide ? " wide" : "") + '">' + art + "<b>" +
@@ -2109,14 +2154,23 @@ function render() {
 function renderPage() {
   // The old Valves page now lives on the Symbols page
   if (S.tab === 10) { S.tab = 9; S.c9.k = "valves"; }
-  if (!GROUPS[groupOf(S.tab)].some(function (x) { return x[0] === S.tab; })) S.tab = DEF.tab; // a removed page
+  syncFavs();
+  if (S.inFav && S.tab !== 0 && S.favs.indexOf(S.tab) < 0) S.tab = GROUPS.fav[0][0]; // un-starred while in Favorites
+  if (S.tab === 0 && !S.inFav) S.tab = DEF.tab;
+  if (S.tab !== 0 && !pageName(S.tab)) S.tab = DEF.tab; // a removed page
   setZoom(S.tab === 9);
   for (var g in S.last) if (S.last[g] === 10 || groupOf(S.last[g]) !== g) S.last[g] = DEF.last[g];
+  // the star in the header adds or removes this page from Favorites
+  var star = document.getElementById("star"), starred = S.favs.indexOf(S.tab) >= 0;
+  star.hidden = S.tab === 0;
+  star.textContent = starred ? "\u2605" : "\u2606";
+  star.classList.toggle("on", starred);
+  star.setAttribute("aria-label", starred ? "Remove from Favorites" : "Add to Favorites");
   invalid = {};
   clearTimeout(histT);
   histPending = false;
-  var grp = groupOf(S.tab);
-  S.last[grp] = S.tab;
+  var grp = curGroup();
+  if (grp !== "fav") S.last[grp] = S.tab;
   // Header: small app name, the group, then the open page in big type
   var here = GROUPS[grp].find(function (x) { return x[0] === S.tab; });
   document.getElementById("title").innerHTML = '<span class="apptitle">Automation Tools</span><small>' +
@@ -2141,6 +2195,12 @@ function renderPage() {
   });
   app.innerHTML = "";
   histBox = null;
+  if (S.tab === 0) {
+    app.innerHTML = '<div class="card favempty"><b>No favorites yet</b>' +
+      "<p>Tap the \u2606 at the top of any page to keep it here, all in one place.</p></div>";
+    setBar(["", ""]);
+    return;
+  }
   if (S.tab === 5) { renderWires(); return; }
   if (S.tab === 9) { renderSymbols(); return; }
   if (S.tab === 11) { renderSubnet(); return; }
@@ -2330,7 +2390,8 @@ function renderHist() {
     h += '<div class="hrow" data-n="' + n + '"><div><div class="hres">' + e.r + '</div><div class="hin">' +
       e.i + '</div></div><div class="htime">' + tm + "</div></div>";
   });
-  if (list.length) h += '<button type="button" class="reset hclear">Clear history</button>';
+  if (list.length) h += '<div class="hbtnrow"><button type="button" class="reset hshare">Share</button>' +
+    '<button type="button" class="reset hclear">Clear History</button></div>';
   var wasOpen = histBox.open;
   histBox.innerHTML = h;
   histBox.open = wasOpen;
@@ -2344,6 +2405,19 @@ function renderHist() {
   });
   var cl = histBox.querySelector(".hclear");
   if (cl) cl.onclick = function () { S.hist[c] = []; save(); renderHist(); };
+  var sh = histBox.querySelector(".hshare");
+  if (sh) sh.onclick = function () { shareHist(list); };
+}
+// Send this page's history as plain text: the phone's share sheet, or the clipboard
+function shareHist(list) {
+  var p2 = function (n) { return (n < 10 ? "0" : "") + n; };
+  var text = pageName(S.tab) + " history\n\n" + list.map(function (e) {
+    var d = new Date(e.t);
+    return p2(d.getMonth() + 1) + "/" + p2(d.getDate()) + "/" + d.getFullYear() + " " +
+      d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "\n" + e.r + "\n" + e.i.replace(/ · /g, ", ");
+  }).join("\n\n");
+  if (navigator.share) navigator.share({ title: "Automation Tools", text: text }).catch(function () {});
+  else copyText(text, "History copied");
 }
 
 // Plain-language description of the open calculator
@@ -2773,21 +2847,21 @@ var SWIPE_SUBS = {
   19: ["c19", "k", ["speed", "zone"]],
   20: ["c20", "k", ["move", "io", "points", "data"]]
 };
-var GROUP_ORDER = ["conv", "ctrl", "ref", "robot"];
-var GROUP_NAMES = { conv: "Conveyor", ctrl: "Controls", ref: "Reference", robot: "ABB Robot" };
+var GROUP_ORDER = ["fav", "conv", "ctrl", "ref", "robot"];
+var GROUP_NAMES = { fav: "Favorites", conv: "Conveyor", ctrl: "Controls", ref: "Reference", robot: "ABB Robot" };
 // Returns what a swipe one step left (+1) or right (-1) does, or null if there's nothing that way
 function pageAt(step, onSub, onNav) {
   if (onNav) {
     // bottom menu: next / previous group, opening the page last used there
-    var g = GROUP_ORDER[GROUP_ORDER.indexOf(groupOf(S.tab)) + step];
-    return g ? function () { openTab(S.last[g]); } : null;
+    var g = GROUP_ORDER[GROUP_ORDER.indexOf(curGroup()) + step];
+    return g ? function () { openGroup(g); } : null;
   }
   var sub = onSub && SWIPE_SUBS[S.tab];
   if (sub) {
     var opts = sub[2], v = opts[opts.indexOf(S[sub[0]][sub[1]]) + step];
     return v === undefined ? null : function () { S[sub[0]][sub[1]] = v; save(); render(); };
   }
-  var list = GROUPS[groupOf(S.tab)], i = list.findIndex(function (pg) { return pg[0] === S.tab; });
+  var list = GROUPS[curGroup()], i = list.findIndex(function (pg) { return pg[0] === S.tab; });
   var t = list[i + step] ? list[i + step][0] : null;
   return t === null ? null : function () { openTab(t); };
 }
@@ -2860,7 +2934,7 @@ document.addEventListener("touchend", endSwipe);
 document.addEventListener("touchcancel", endSwipe);
 // A group button opens the page you last used in that group
 document.querySelectorAll("nav button[data-group]").forEach(function (b) {
-  b.onclick = function () { openTab(S.last[b.dataset.group]); };
+  b.onclick = function () { openGroup(b.dataset.group); };
 });
 applyTheme();
 render();
