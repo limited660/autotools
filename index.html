@@ -112,6 +112,23 @@ header h1 {
 }
 #bar small { font-size: 14px; font-weight: 600; opacity: .85; }
 #bar:not(.show) { display: none; }
+#upd {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--nav-h) + 12px + env(safe-area-inset-bottom));
+  z-index: 20;
+  border: 0;
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+}
+#upd[hidden] { display: none; }
 #bar.long { font-size: 15px; flex-wrap: wrap; text-align: center; }
 
 
@@ -521,6 +538,7 @@ html.nozoom, html.nozoom body { touch-action: pan-x pan-y; }
 <div id="pages" role="tablist"></div>
 <div id="bar"></div>
 <main id="app"></main>
+<button id="upd" type="button" hidden></button>
 <footer id="ver"></footer>
 <nav role="tablist">
   <button role="tab" data-group="conv">
@@ -993,7 +1011,6 @@ function renderWires() {
 
   var about = document.createElement("details");
   about.className = "card about";
-  about.open = true;
   about.innerHTML = "<summary>Notes</summary>" +
     "<p>Standard colors for M8 and M12 sensor cables (IEC 60947-5-2). " +
     "3-wire sensors use pins 1, 3 and 4 only: brown +V, blue 0 V, black output.</p>" +
@@ -1131,7 +1148,6 @@ function renderAWG() {
   app.appendChild(card);
   var about = document.createElement("details");
   about.className = "card about";
-  about.open = true;
   about.innerHTML = "<summary>Notes</summary>" +
     "<p><b>mm²</b> is the actual copper area of the AWG size. <b>Metric</b> is the closest standard metric " +
     "size. A few (20, 18 and 1/0 AWG) are slightly smaller, so check ampacity if you swap.</p>" +
@@ -1179,7 +1195,6 @@ function renderTap() {
   app.appendChild(card);
   var about = document.createElement("details");
   about.className = "card about";
-  about.open = true;
   about.innerHTML = "<summary>Notes</summary>" +
     "<p>Drill sizes give about 75% thread, the usual choice for cut taps in steel and aluminum.</p>" +
     "<p>Form (roll) taps need a bigger drill; check the tap maker's chart.</p>" +
@@ -1465,7 +1480,6 @@ function renderSymbols() {
 
   var about = document.createElement("details");
   about.className = "card about";
-  about.open = true;
   about.innerHTML = "<summary>Notes</summary>" + (S.c9.k === "elec" ?
     "<p>Electrical symbols are drawn in the NEMA / ANSI ladder style used on most US drawings. " +
     "IEC drawings use different shapes for some parts, for example a rectangle for a coil.</p>" : S.c9.k === "valves" ?
@@ -1621,7 +1635,6 @@ function render() {
 
   var about = document.createElement("details");
   about.className = "card about";
-  about.open = true;
   about.innerHTML = "<summary>How It Works</summary>" + describe();
   app.appendChild(about);
 }
@@ -2026,6 +2039,25 @@ function setBar(sum) {
 function openTab(t) {
   S.tab = t; save(); render(); window.scrollTo(0, 0);
 }
+// Swipe left / right on the page to go to the next / previous tab in its group
+var swipe = null;
+app.addEventListener("touchstart", function (e) {
+  var t = e.target;
+  // not while typing, on a zoomed-in Symbols page, or with two fingers
+  if (e.touches.length !== 1 || t.closest("input, select, textarea") ||
+      (window.visualViewport && window.visualViewport.scale > 1.01)) { swipe = null; return; }
+  swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+}, { passive: true });
+app.addEventListener("touchend", function (e) {
+  if (!swipe) return;
+  var dx = e.changedTouches[0].clientX - swipe.x, dy = e.changedTouches[0].clientY - swipe.y;
+  var quick = Date.now() - swipe.t < 600;
+  swipe = null;
+  if (!quick || Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 2) return;
+  var list = GROUPS[groupOf(S.tab)], i = list.findIndex(function (pg) { return pg[0] === S.tab; });
+  var next = list[i + (dx < 0 ? 1 : -1)];
+  if (next) openTab(next[0]);
+}, { passive: true });
 // A group button opens the page you last used in that group
 document.querySelectorAll("nav button[data-group]").forEach(function (b) {
   b.onclick = function () { openTab(S.last[b.dataset.group]); };
@@ -2036,16 +2068,37 @@ if (typeof APP_VERSION === "string")
   document.getElementById("ver").textContent = APP_VERSION + (typeof APP_DATE === "string" ? " - " + APP_DATE : "");
 
 // ---- Offline support ----
+var swReg = null;
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function () {
-    navigator.serviceWorker.register("sw.js").then(function (reg) {
-      // Check for a new version whenever the app is brought back to the front
-      document.addEventListener("visibilitychange", function () {
-        if (document.visibilityState === "visible") reg.update().catch(function () {});
-      });
-    }).catch(function () {});
+    navigator.serviceWorker.register("sw.js").then(function (reg) { swReg = reg; }).catch(function () {});
   });
 }
+
+// ---- Update check ----
+// Asks the site straight for version.js (skipping every cache) when the app opens
+// or comes back to the front. If the site has a newer version, offer a reload.
+var updBtn = document.getElementById("upd");
+function checkUpdate() {
+  if (typeof APP_VERSION !== "string" || !navigator.onLine) return;
+  fetch("version.js?nc=" + Date.now(), { cache: "no-store" }).then(function (r) {
+    return r.ok ? r.text() : "";
+  }).then(function (t) {
+    var m = t.match(/APP_VERSION\s*=\s*"([^"]+)"/);
+    if (!m || m[1] === APP_VERSION) return;
+    updBtn.textContent = m[1] + " ready – tap to update";
+    updBtn.hidden = false;
+  }).catch(function () {});
+}
+updBtn.onclick = function () {
+  updBtn.textContent = "Updating…";
+  var done = function () { location.reload(); };
+  if (swReg) swReg.update().then(done, done); else done();
+};
+document.addEventListener("visibilitychange", function () {
+  if (document.visibilityState === "visible") checkUpdate();
+});
+window.addEventListener("load", function () { setTimeout(checkUpdate, 2000); });
 </script>
 </body>
 </html>
