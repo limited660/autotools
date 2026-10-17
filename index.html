@@ -280,6 +280,8 @@ label.field > span { display: block; font-size: 16px; font-weight: 600; color: v
 }
 .big { font-size: 44px; font-weight: 700; line-height: 1.1; }
 .big small { font-size: 22px; font-weight: 600; color: var(--muted); }
+.subout { text-align: center; }
+.rows.masks { margin-top: 0; }
 .big-label { font-size: 16px; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
 .alt { color: var(--muted); font-size: 18px; margin-top: 2px; }
 .tap { cursor: pointer; border-radius: 8px; }
@@ -552,7 +554,8 @@ var DEF = {
   c8: { u: "in", x: 4, ppr: 1024, D: 4, dist: 12, f: 100 },
   hist: {},
   last: { conv: 1, ctrl: 7, ref: 5, robot: 4 }, // last page opened in each group
-  c9: { k: "elec" }
+  c9: { k: "elec" },
+  c11: { mask: "255.255.255.0" }
 };
 var KEY = "autotools-v1";
 var S = JSON.parse(JSON.stringify(DEF));
@@ -560,7 +563,7 @@ try {
   // Older versions saved under "convcalc-v1"; carry those values over
   var saved = JSON.parse(localStorage.getItem(KEY) || localStorage.getItem("convcalc-v1") || "null");
   if (saved) {
-    ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9"].forEach(function (c) {
+    ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c11"].forEach(function (c) {
       if (saved[c]) for (var k in S[c]) if (k in saved[c]) S[c][k] = saved[c][k];
     });
     if (saved.tab) S.tab = saved.tab;
@@ -965,12 +968,86 @@ function renderWires() {
   setBar(["", ""]);
 }
 
+// ---- Subnet tab: mask (255.255.255.0) <-> prefix (/24) ----
+function prefixToMask(n) {
+  var m = n ? (0xffffffff << (32 - n)) >>> 0 : 0;
+  return [m >>> 24, (m >>> 16) & 255, (m >>> 8) & 255, m & 255].join(".");
+}
+// Reads "255.255.255.0", "/24" or "24". Returns the prefix length, or null if it isn't a valid mask.
+function parseMask(t) {
+  t = t.trim();
+  var m = t.match(/^\/?\s*(\d{1,2})$/);
+  if (m) return Number(m[1]) <= 32 ? Number(m[1]) : null;
+  var o = t.split(".");
+  if (o.length !== 4 || o.some(function (x) { return !/^\d{1,3}$/.test(x) || Number(x) > 255; })) return null;
+  for (var n = 0; n <= 32; n++) if (prefixToMask(n) === o.map(Number).join(".")) return n;
+  return null; // the 1s aren't all on the left, e.g. 255.0.255.0
+}
+function subnetResult(n) {
+  if (n === null) return '<p class="err">Not a valid subnet mask</p>';
+  var hosts = n >= 31 ? (n === 31 ? 2 : 1) : Math.pow(2, 32 - n) - 2;
+  return '<div class="big-label">Prefix</div><div class="big">/' + n + "</div>" +
+    '<div class="alt">' + prefixToMask(n) + "</div>" +
+    '<div class="rows"><div class="row"><span class="k">Usable hosts</span><span class="v">' +
+    hosts.toLocaleString() + '</span></div><div class="row"><span class="k">Wildcard</span><span class="v">' +
+    prefixToMask(n).split(".").map(function (x) { return 255 - x; }).join(".") + "</span></div></div>";
+}
+function renderSubnet() {
+  var card = document.createElement("div");
+  card.className = "card";
+  var lab = document.createElement("label");
+  lab.className = "field";
+  lab.innerHTML = "<span>Subnet mask or /prefix</span>";
+  var wrap = document.createElement("div");
+  wrap.className = "inwrap";
+  var inp = document.createElement("input");
+  inp.type = "text";
+  inp.inputMode = "decimal";
+  inp.autocomplete = "off";
+  inp.className = "paste";
+  inp.value = S.c11.mask;
+  wrap.appendChild(inp);
+  lab.appendChild(wrap);
+  card.appendChild(lab);
+  var out = document.createElement("div");
+  out.className = "subout";
+  card.appendChild(out);
+  function show() {
+    var n = parseMask(inp.value);
+    inp.classList.toggle("bad", n === null && inp.value.trim() !== "");
+    out.innerHTML = inp.value.trim() === "" ? "" : subnetResult(n);
+    setBar(n === null ? ["", ""] : ["Prefix", "/" + n]);
+  }
+  inp.addEventListener("focus", function () { inp.select(); });
+  inp.addEventListener("keydown", function (e) { if (e.key === "Enter") inp.blur(); });
+  inp.addEventListener("input", function () { S.c11.mask = inp.value; save(); show(); });
+  app.appendChild(card);
+
+  // Common masks; tap one to fill the box
+  var ref = document.createElement("div");
+  ref.className = "card";
+  var t = '<p class="seg-label">Common masks</p><div class="rows masks">';
+  for (var n = 8; n <= 30; n++) {
+    t += '<div class="row tap" data-m="' + prefixToMask(n) + '"><span class="k">/' + n + '</span><span class="v">' +
+      prefixToMask(n) + "</span></div>";
+  }
+  ref.innerHTML = t + "</div>";
+  ref.onclick = function (e) {
+    var r = e.target.closest("[data-m]");
+    if (!r) return;
+    inp.value = S.c11.mask = r.dataset.m;
+    save(); show(); window.scrollTo(0, 0);
+  };
+  app.appendChild(ref);
+  show();
+}
+
 // Tools are grouped; the bottom bar picks the group, the strip under the
 // header picks the page within it
 var GROUPS = {
   conv: [[1, "Speed"], [2, "Sensor"], [3, "Gap"], [6, "Drive"]],
   ctrl: [[7, "Analog"], [8, "Encoder"]],
-  ref: [[5, "Wires"], [9, "Symbols"]],
+  ref: [[5, "Wires"], [9, "Symbols"], [11, "Subnet"]],
   robot: [[4, "Orientation"]]
 };
 function groupOf(t) {
@@ -1078,7 +1155,7 @@ var SYMBOLS = {
     ["Disconnect", "3-pole, operated together", POLES(function (x) {
       return '<path d="M' + x + ' 4V30M' + x + ' 50V76M' + x + ' 50L' + (x + 8) + ' 31"/>';
     }, 41)],
-    ["Circuit interrupter", "3-pole", POLES(function (x) {
+    ["Circuit breaker", "3-pole", POLES(function (x) {
       return '<path d="M' + x + ' 4V28' + ARC(x, 28) + 'V76"/>';
     }, 38)],
     ["Circuit breaker, thermal OL", "Trips on overload heat", POLES(function (x) {
@@ -1284,6 +1361,7 @@ function render() {
   histBox = null;
   if (S.tab === 5) { renderWires(); return; }
   if (S.tab === 9) { renderSymbols(); return; }
+  if (S.tab === 11) { renderSubnet(); return; }
   var c = "c" + S.tab;
   var card = document.createElement("div");
   card.className = "card";
