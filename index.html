@@ -68,6 +68,7 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
+html { background: var(--bg); } /* the page color reaches the bottom of tall windows */
 body {
   background: var(--bg);
   color: var(--text);
@@ -701,6 +702,37 @@ footer { padding-bottom: calc(var(--nav-h) + 40px + env(safe-area-inset-bottom))
 /* ---- Symbols and tables follow the card style ---- */
 .sym, .wire { border: 0; background: var(--card2); border-radius: 14px; }
 .wire .pin { border-radius: 10px; }
+
+/* ======== Computer screens: menu down the left side, wider content, calculators in two columns
+   (entries on the left, results, history and notes on the right) ======== */
+@media (min-width: 900px) {
+  :root { --side: 210px; }
+  body { padding-left: var(--side); }
+  nav { top: 0; bottom: 0; left: 0; right: auto; width: var(--side); flex-direction: column; justify-content: flex-start;
+    gap: 4px; padding: 88px 12px 12px; border: 0; border-right: 1px solid var(--line); border-radius: 0; box-shadow: none; }
+  nav button { flex: 0 0 auto; height: 46px; flex-direction: row; justify-content: flex-start; gap: 12px;
+    padding: 0 14px; font-size: 15px; border-radius: 12px; }
+  nav button svg { width: 22px; height: 22px; }
+  body.typing nav { display: flex; } /* no on-screen keypad to make room for */
+  body.typing main { padding-bottom: 8px; }
+  header, #pages { max-width: 1040px; margin: 0 auto; }
+  header { padding-left: 24px; padding-right: 24px; }
+  header h1 { font-size: 34px; }
+  #pages { padding: 4px 16px 10px; }
+  #pages button { min-height: 40px; }
+  main { max-width: 1040px; padding: 12px 24px 8px; }
+  #app.calc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 18px; align-items: start; }
+  #app.calc > .card:first-child { grid-row: 1 / span 3; }
+  #app.calc > .card:not(:first-child) { grid-column: 2; }
+  .syms { grid-template-columns: repeat(4, 1fr); }
+  .sym.wide { grid-column: span 2; }
+  .codes { grid-template-columns: repeat(3, 1fr); }
+  footer { padding-bottom: 24px; }
+  #upd { left: calc(var(--side) + 24px); right: 24px; bottom: 20px; max-width: 520px; margin: 0 auto; }
+  #toast { left: calc(50% + var(--side) / 2); bottom: 24px; }
+  #log { padding-left: var(--side); align-items: center; }
+  .logsheet { border-radius: 16px; max-height: 80vh; }
+}
 </style>
 </head>
 <body>
@@ -2194,6 +2226,7 @@ function renderPage() {
     track.appendChild(b);
   });
   app.innerHTML = "";
+  app.className = ""; // calculators set "calc" below for the two-column computer layout
   histBox = null;
   if (S.tab === 0) {
     app.innerHTML = '<div class="card favempty"><b>No favorites yet</b>' +
@@ -2210,6 +2243,7 @@ function renderPage() {
   if (S.tab === 19) { renderSpeedZone(); return; }
   if (S.tab === 20) { renderRapid(); return; }
   var c = "c" + S.tab;
+  app.className = "calc";
   var card = document.createElement("div");
   card.className = "card";
 

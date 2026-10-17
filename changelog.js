@@ -1,6 +1,9 @@
 // What's New. Add a new entry at the top with every version (same number as version.js).
 // Keep each line short and in plain words: what changed for the person using the app.
 var CHANGELOG = [
+  { v: "v78", d: "10/17/2026", n: [
+    "Computer layout: menu down the left side, wider pages, and calculators with entries and results side by side"
+  ] },
   { v: "v77", d: "10/17/2026", n: [
     "Favorites: tap the star at the top of any page to keep it in the new Favorites group",
     "History has a Share button that sends or copies the list as text",
