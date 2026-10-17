@@ -132,6 +132,7 @@ header h1 {
 #bar.long { font-size: 15px; flex-wrap: wrap; text-align: center; }
 
 
+html, body { overflow-x: clip; }
 main {
   max-width: 520px;
   margin: 0 auto;
@@ -2039,25 +2040,57 @@ function setBar(sum) {
 function openTab(t) {
   S.tab = t; save(); render(); window.scrollTo(0, 0);
 }
-// Swipe left / right on the page to go to the next / previous tab in its group
+// Swipe left / right on the page to go to the next / previous tab in its group.
+// The page follows your finger; let go past a quarter of the screen (or flick) to change page.
 var swipe = null;
+function pageAt(step) {
+  var list = GROUPS[groupOf(S.tab)], i = list.findIndex(function (pg) { return pg[0] === S.tab; });
+  return list[i + step] ? list[i + step][0] : null;
+}
+function slide(x, ms) {
+  app.style.transition = ms ? "transform " + ms + "ms ease-out" : "none";
+  app.style.transform = x ? "translateX(" + x + "px)" : "";
+}
 app.addEventListener("touchstart", function (e) {
   var t = e.target;
   // not while typing, on a zoomed-in Symbols page, or with two fingers
   if (e.touches.length !== 1 || t.closest("input, select, textarea") ||
       (window.visualViewport && window.visualViewport.scale > 1.01)) { swipe = null; return; }
-  swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+  swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), dx: 0, side: false };
 }, { passive: true });
-app.addEventListener("touchend", function (e) {
+app.addEventListener("touchmove", function (e) {
   if (!swipe) return;
-  var dx = e.changedTouches[0].clientX - swipe.x, dy = e.changedTouches[0].clientY - swipe.y;
-  var quick = Date.now() - swipe.t < 600;
+  var dx = e.touches[0].clientX - swipe.x, dy = e.touches[0].clientY - swipe.y;
+  if (!swipe.side) {
+    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+    // decide once: sideways drags move the page, anything else is a normal scroll
+    if (Math.abs(dx) < Math.abs(dy) * 1.5) { swipe = null; return; }
+    swipe.side = true;
+  }
+  e.preventDefault(); // don't scroll up and down while dragging sideways
+  // no page that way: drag with resistance
+  swipe.dx = pageAt(dx < 0 ? 1 : -1) ? dx : dx / 3;
+  slide(swipe.dx, 0);
+}, { passive: false });
+function endSwipe() {
+  if (!swipe) return;
+  var sw = swipe;
   swipe = null;
-  if (!quick || Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 2) return;
-  var list = GROUPS[groupOf(S.tab)], i = list.findIndex(function (pg) { return pg[0] === S.tab; });
-  var next = list[i + (dx < 0 ? 1 : -1)];
-  if (next) openTab(next[0]);
-}, { passive: true });
+  if (!sw.side) return;
+  var w = window.innerWidth, dx = sw.dx, fast = Math.abs(dx) / (Date.now() - sw.t) > 0.5;
+  var next = pageAt(dx < 0 ? 1 : -1);
+  if (!next || (Math.abs(dx) < w / 4 && !fast)) { slide(0, 180); return; } // snap back
+  var dir = dx < 0 ? -1 : 1;
+  slide(dir * w, 160); // finish sliding out...
+  setTimeout(function () {
+    openTab(next);
+    slide(-dir * w, 0); // ...and slide the new page in from the other side
+    app.getBoundingClientRect();
+    slide(0, 200);
+  }, 160);
+}
+app.addEventListener("touchend", endSwipe);
+app.addEventListener("touchcancel", endSwipe);
 // A group button opens the page you last used in that group
 document.querySelectorAll("nav button[data-group]").forEach(function (b) {
   b.onclick = function () { openTab(S.last[b.dataset.group]); };
