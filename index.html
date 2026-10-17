@@ -1052,7 +1052,7 @@ function TERMS(y) {
 // Blades for terminals at y = 18 (open: angled down under the right terminal)
 // and y = 24 (closed: across the top of the right terminal)
 var BLADE_NO = '<path d="M42.5 20L86 42"/>';
-var BLADE_NC = '<path d="M43 24L88 19"/>';
+var BLADE_NC = '<path d="M43 24L88 17.5"/>';
 var VBOX = '<path d="M118 22H80V58H118"/>'; // edge of a valve box, for actuators
 var CYL2 = '<rect x="10" y="25" width="70" height="30"/><path d="M38 25V55M38 40H112M22 55V70M68 55V70"/>';
 var CHECK = '<path d="M8 40H50M50 40L72 24M50 40L72 56M75 40H112"/><circle cx="66" cy="40" r="9"/>';
@@ -1099,13 +1099,13 @@ var SYMBOLS = {
     ["Foot switch, NO", "", SHIFT(-4, TERMS(52) + '<path d="M42.5 49.9L81.6 33.2M55.7 37.7L66.7 34.3L67.9 39.1"/>')],
     ["Foot switch, NC", "", SHIFT(8, TERMS(40) + '<path d="M43 40L79.5 44.3M58.7 35.3L70.1 37.5L70.7 43.2"/>')],
     ["Pressure / vacuum switch, NO", "", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V50M54 64H74A10 14 0 0 0 54 64"/>')],
-    ["Pressure / vacuum switch, NC", "", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21.7V52M54 66H74A10 14 0 0 0 54 66"/>')],
+    ["Pressure / vacuum switch, NC", "", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V52M54 66H74A10 14 0 0 0 54 66"/>')],
     ["Liquid level switch, NO", "", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V48"/><circle cx="64" cy="58" r="10"/>')],
-    ["Liquid level switch, NC", "", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21.7V50"/><circle cx="64" cy="60" r="10"/>')],
+    ["Liquid level switch, NC", "", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V50"/><circle cx="64" cy="60" r="10"/>')],
     ["Temperature switch, NO", "", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V40H71V48H57V56H64V64"/>')],
-    ["Temperature switch, NC", "", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21.7V40H71V48H57V56H64V64"/>')],
+    ["Temperature switch, NC", "", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V40H71V48H57V56H64V64"/>')],
     ["Flow switch, NO", "Air, water, etc.", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V62H76L64 42"/>')],
-    ["Flow switch, NC", "Air, water, etc.", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21.7V60H76L64 40"/>')]
+    ["Flow switch, NC", "Air, water, etc.", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V60H76L64 40"/>')]
   ],
   pneu: [
     ["Pressure source", "Air supply", '<circle cx="46" cy="40" r="14"/><circle cx="46" cy="40" r="3" fill="currentColor"/><path d="M60 40H112"/>'],
