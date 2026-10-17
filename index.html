@@ -1040,6 +1040,7 @@ function renderSubnet() {
   card.className = "card";
   var ipBox = textBox("IP address (optional)", S.c11.ip, "192.168.1.50");
   var mBox = textBox("Subnet mask or /prefix", S.c11.mask);
+  ipBox.inp.inputMode = "decimal"; // number pad with a "." key
   card.appendChild(ipBox.lab);
   card.appendChild(mBox.lab);
   var out = document.createElement("div");
