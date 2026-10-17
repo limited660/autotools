@@ -1,6 +1,10 @@
 // What's New. Add a new entry at the top with every version (same number as version.js).
 // Keep each line short and in plain words: what changed for the person using the app.
 var CHANGELOG = [
+  { v: "v65", d: "10/17/2026", n: [
+    "The update bar has an × to dismiss it, and hides while you're typing",
+    "What's New closes with the back gesture, and the page behind it no longer scrolls"
+  ] },
   { v: "v64", d: "10/17/2026", n: [
     "New What's New list: tap the version at the bottom of any page",
     "After an update, a bar offers to show what changed"

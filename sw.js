@@ -2,7 +2,9 @@
 // whenever any file changes so phones download the new copy.
 importScripts("version.js");
 var VERSION = "autotools-" + APP_VERSION;
-var FILES = ["./", "index.html", "version.js", "changelog.js", "manifest.json", "icon-192.png", "icon-512.png"];
+var FILES = ["./", "index.html", "version.js", "manifest.json", "icon-192.png", "icon-512.png"];
+// Extras are stored too, but one going missing mustn't stop the offline copy from installing
+var EXTRAS = ["changelog.js"];
 
 // GitHub Pages lets browsers reuse files for 10 minutes. Always ask the
 // server for the current copy instead, so updates show up straight away.
@@ -12,7 +14,9 @@ function fresh(req) {
 
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(VERSION).then(function (c) {
-    return c.addAll(FILES.map(function (f) { return new Request(f, { cache: "reload" }); }));
+    return c.addAll(FILES.map(function (f) { return new Request(f, { cache: "reload" }); })).then(function () {
+      return Promise.all(EXTRAS.map(function (f) { return c.add(new Request(f, { cache: "reload" })).catch(function () {}); }));
+    });
   }));
   self.skipWaiting();
 });

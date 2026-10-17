@@ -120,17 +120,17 @@ header h1 {
   right: 12px;
   bottom: calc(var(--nav-h) + 12px + env(safe-area-inset-bottom));
   z-index: 20;
-  border: 0;
+  display: flex;
   border-radius: 12px;
-  padding: 14px;
   background: var(--accent);
   color: var(--accent-text);
-  font: inherit;
-  font-size: 17px;
-  font-weight: 700;
-  cursor: pointer;
 }
 #upd[hidden] { display: none; }
+#upd button { border: 0; background: transparent; color: inherit; font-weight: 700; cursor: pointer; }
+#updgo { flex: 1; padding: 14px; font-size: 17px; }
+#updx { padding: 0 16px; font-size: 24px; line-height: 1; }
+/* Out of the way while the keypad is open (finding 2) */
+body.typing #upd { display: none; }
 
 /* A page sliding sideways mustn't make the whole window scroll sideways */
 html, body { overflow-x: clip; }
@@ -397,7 +397,8 @@ footer {
 }
 #ver u { text-underline-offset: 2px; }
 /* ---- What's New sheet ---- */
-#log { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.5); display: flex; align-items: flex-end; }
+#log { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.5); display: flex; align-items: flex-end;
+  touch-action: none; } /* the dark backdrop doesn't scroll the page behind it */
 #log[hidden] { display: none; }
 .logsheet {
   width: 100%;
@@ -405,6 +406,9 @@ footer {
   max-height: 85vh;
   margin: 0 auto;
   overflow-y: auto;
+  overscroll-behavior: contain; /* reaching the end of the list doesn't scroll the page behind */
+  touch-action: pan-y;
+  outline: none;
   background: var(--card);
   border-radius: 16px 16px 0 0;
   padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
@@ -583,11 +587,11 @@ html.nozoom #app { touch-action: pan-y; }
 <div id="pages" role="tablist"></div>
 <div id="bar"></div>
 <main id="app"></main>
-<button id="upd" type="button" hidden></button>
+<div id="upd" hidden><button id="updgo" type="button"></button><button id="updx" type="button" aria-label="Dismiss">&times;</button></div>
 <footer><button id="ver" type="button"></button></footer>
 <div id="log" hidden>
-  <div class="logsheet" role="dialog" aria-label="What's New">
-    <div class="loghead"><h2>What's New</h2><button id="logx" type="button">Close</button></div>
+  <div class="logsheet" role="dialog" aria-modal="true" aria-labelledby="logtitle" tabindex="-1">
+    <div class="loghead"><h2 id="logtitle">What's New</h2><button id="logx" type="button">Close</button></div>
     <div id="logbody"></div>
   </div>
 </div>
@@ -607,7 +611,6 @@ html.nozoom #app { touch-action: pan-y; }
 </nav>
 <div id="toast"></div>
 <script src="version.js"></script>
-<script src="changelog.js"></script>
 
 <script>
 // ---- Rounding (conveyor tabs: half rounds up, like the TI version) ----
@@ -2424,34 +2427,62 @@ if (typeof APP_VERSION === "string")
   document.getElementById("ver").innerHTML = APP_VERSION + (typeof APP_DATE === "string" ? " - " + APP_DATE : "") +
     " &middot; <u>What's New</u>";
 
-// ---- What's New: tap the version at the bottom, or shown once after an update ----
-var updBtn = document.getElementById("upd"); // also used by the update check below
-var logEl = document.getElementById("log");
-function showLog() {
-  var list = typeof CHANGELOG === "object" ? CHANGELOG : [];
-  document.getElementById("logbody").innerHTML = list.length ? list.map(function (e) {
-    return '<h3 class="logv">' + e.v + "<small>" + e.d + "</small></h3><ul>" +
-      e.n.map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ul>";
-  }).join("") : "<p>No notes yet.</p>";
-  logEl.hidden = false;
-  logEl.querySelector(".logsheet").scrollTop = 0;
+// ---- What's New: tap the version at the bottom, or offered once after an update ----
+// The bar above the bottom menu does two jobs: "vXX Ready - Tap to Update" and
+// "Updated to vXX - See What's New". Its x hides it.
+var updBox = document.getElementById("upd"), updBtn = document.getElementById("updgo");
+var updMode = ""; // "update" or "news"
+function showUpd(mode, text) { updMode = mode; updBtn.textContent = text; updBox.hidden = false; }
+function hideUpd() { updBox.hidden = true; if (updMode === "news") markSeen(); updMode = ""; }
+var curVer = typeof APP_VERSION === "string" ? APP_VERSION.split(" ")[0] : ""; // "v64 preview" -> "v64"
+// The notes count as seen once you open them or dismiss the bar, not just because the app loaded
+function markSeen() { if (curVer && S.seenVer !== curVer) { S.seenVer = curVer; save(); } }
+
+var logEl = document.getElementById("log"), logBack = null;
+function escHtml(t) { return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function fillLog() {
+  var list = typeof CHANGELOG === "object" ? CHANGELOG : null;
+  document.getElementById("logbody").innerHTML = !list ? "<p>Couldn't load the notes. Try again when you're online.</p>" :
+    list.map(function (e) {
+      return '<h3 class="logv">' + escHtml(e.v) + "<small>" + escHtml(e.d) + "</small></h3><ul>" +
+        e.n.map(function (x) { return "<li>" + escHtml(x) + "</li>"; }).join("") + "</ul>";
+    }).join("");
 }
-function hideLog() { logEl.hidden = true; }
+function showLog() {
+  markSeen();
+  logBack = document.activeElement;
+  document.getElementById("logbody").innerHTML = "<p>Loading…</p>";
+  logEl.hidden = false;
+  var sheet = logEl.querySelector(".logsheet");
+  sheet.scrollTop = 0;
+  sheet.focus();
+  // the phone's back gesture closes the sheet instead of leaving the app
+  history.pushState({ log: 1 }, "");
+  if (typeof CHANGELOG === "object") { fillLog(); return; }
+  // only fetched when it's wanted; the offline copy works too
+  var sc = document.createElement("script");
+  sc.src = "changelog.js";
+  sc.onload = sc.onerror = fillLog;
+  document.body.appendChild(sc);
+}
+function closeLog() {
+  if (logEl.hidden) return;
+  logEl.hidden = true;
+  if (logBack && logBack.focus) logBack.focus();
+}
+// Close buttons go back through history so the extra entry from showLog is used up
+function hideLog() { if (history.state && history.state.log) history.back(); else closeLog(); }
+window.addEventListener("popstate", closeLog);
+document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !logEl.hidden) hideLog(); });
 document.getElementById("ver").onclick = showLog;
 document.getElementById("logx").onclick = hideLog;
 logEl.onclick = function (e) { if (e.target === logEl) hideLog(); }; // tap outside the sheet
-(function () {
-  if (typeof APP_VERSION !== "string") return;
-  var cur = APP_VERSION.split(" ")[0]; // "v63 preview" -> "v63"
-  // First time after an update: offer the notes once. A brand-new install just remembers the version.
-  if (S.seenVer && S.seenVer !== cur && typeof CHANGELOG === "object" && CHANGELOG.length && CHANGELOG[0].v === cur) {
-    updBtn.textContent = "Updated to " + cur + " \u2013 See What's New";
-    updBtn.hidden = false;
-    updBtn.dataset.news = "1";
-  }
-  S.seenVer = cur;
-  save();
-})();
+document.getElementById("updx").onclick = hideUpd;
+if (curVer) {
+  // A brand-new install just remembers the version; after an update, offer the notes
+  if (!S.seenVer) markSeen();
+  else if (S.seenVer !== curVer) showUpd("news", "Updated to " + curVer + " – See What's New");
+}
 
 // ---- Offline support ----
 var swReg = null;
@@ -2471,13 +2502,12 @@ function checkUpdate() {
   }).then(function (t) {
     var m = t.match(/APP_VERSION\s*=\s*"([^"]+)"/);
     if (!m || m[1] === APP_VERSION) return;
-    delete updBtn.dataset.news;
-    updBtn.textContent = m[1] + " Ready – Tap to Update";
-    updBtn.hidden = false;
+    // an update matters more than notes; notes stay unseen, so they're offered after the reload
+    showUpd("update", m[1] + " Ready – Tap to Update");
   }).catch(function () {});
 }
 updBtn.onclick = function () {
-  if (updBtn.dataset.news) { delete updBtn.dataset.news; updBtn.hidden = true; showLog(); return; }
+  if (updMode === "news") { hideUpd(); showLog(); return; }
   updBtn.textContent = "Updating…";
   var done = function () { location.reload(); };
   if (swReg) swReg.update().then(done, done); else done();
