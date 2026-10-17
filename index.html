@@ -1220,29 +1220,29 @@ function renderTap() {
 // [code, name, what it's for]
 var PF_PARAMS = [
   ["Basic Program", [
-    ["P031", "Motor NP Volts", "Motor nameplate voltage"],
-    ["P032", "Motor NP Hertz", "Motor nameplate frequency"],
-    ["P033", "Motor OL Current", "Overload trip current; usually nameplate FLA"],
-    ["P034", "Motor NP FLA", "Motor nameplate full-load amps"],
-    ["P035", "Motor NP Poles", "Number of motor poles"],
-    ["P036", "Motor NP RPM", "Motor nameplate speed"],
-    ["P037", "Motor NP Power", "Motor nameplate power"],
-    ["P039", "Torque Perf Mode", "V/Hz, sensorless vector, economy or vector"],
+    ["P031", "Motor Nameplate Volts", "Motor nameplate voltage"],
+    ["P032", "Motor Nameplate Hertz", "Motor nameplate frequency"],
+    ["P033", "Motor Overload Current", "Overload trip current; usually the nameplate full-load amps"],
+    ["P034", "Motor Nameplate Full-Load Amps", "Motor nameplate full-load amps"],
+    ["P035", "Motor Nameplate Poles", "Number of motor poles"],
+    ["P036", "Motor Nameplate RPM", "Motor nameplate speed"],
+    ["P037", "Motor Nameplate Power", "Motor nameplate power"],
+    ["P039", "Torque Performance Mode", "V/Hz, sensorless vector, economy or vector"],
     ["P040", "Autotune", "Static or rotate tune after entering the nameplate"],
-    ["P041", "Accel Time 1", "Seconds from 0 to max frequency"],
-    ["P042", "Decel Time 1", "Seconds from max frequency to 0"],
-    ["P043", "Minimum Freq", "Lowest running speed"],
-    ["P044", "Maximum Freq", "Highest running speed"],
+    ["P041", "Acceleration Time 1", "Seconds from 0 to max frequency"],
+    ["P042", "Deceleration Time 1", "Seconds from max frequency to 0"],
+    ["P043", "Minimum Frequency", "Lowest running speed"],
+    ["P044", "Maximum Frequency", "Highest running speed"],
     ["P045", "Stop Mode", "0 = Ramp, 1 = Coast (more options for DC brake)"],
     ["P046", "Start Source 1", "Where run commands come from; 5 = EtherNet/IP"],
-    ["P047", "Speed Reference1", "Where speed comes from; 15 = EtherNet/IP"],
+    ["P047", "Speed Reference 1", "Where speed comes from; 15 = EtherNet/IP"],
     ["P048", "Start Source 2", "Second start source, picked by a digital input or network"],
-    ["P049", "Speed Reference2", "Second speed source"],
-    ["P053", "Reset To Defalts", "Sets parameters back to factory (spelled this way on the drive)"]
+    ["P049", "Speed Reference 2", "Second speed source"],
+    ["P053", "Reset to Defaults", "Sets parameters back to factory"]
   ]],
   ["Display", [
-    ["b001", "Output Freq", "Frequency the drive is putting out"],
-    ["b002", "Commanded Freq", "Frequency it's being told to run"],
+    ["b001", "Output Frequency", "Frequency the drive is putting out"],
+    ["b002", "Commanded Frequency", "Frequency it's being told to run"],
     ["b003", "Output Current", "Motor amps"],
     ["b004", "Output Voltage", "Motor volts"],
     ["b005", "DC Bus Voltage", "Bus voltage inside the drive"],
@@ -1250,40 +1250,40 @@ var PF_PARAMS = [
     ["b007", "Fault 1 Code", "Most recent fault"]
   ]],
   ["EtherNet/IP", [
-    ["C128", "EN Addr Sel", "1 = use the IP set in parameters, 2 = BOOTP"],
-    ["C129-C132", "EN IP Addr Cfg 1-4", "IP address, one number per parameter"],
-    ["C133-C136", "EN Subnet Cfg 1-4", "Subnet mask"],
-    ["C137-C140", "EN Gateway Cfg 1-4", "Gateway"]
+    ["C128", "EtherNet/IP Address Select", "1 = use the IP set in parameters, 2 = BOOTP"],
+    ["C129-C132", "EtherNet/IP Address Config 1-4", "IP address, one number per parameter"],
+    ["C133-C136", "EtherNet/IP Subnet Config 1-4", "Subnet mask"],
+    ["C137-C140", "EtherNet/IP Gateway Config 1-4", "Gateway"]
   ]]
 ];
 var PF_FAULTS = [
-  ["F002", "Auxiliary In", "External fault input opened"],
+  ["F002", "Auxiliary Input", "External fault input opened"],
   ["F003", "Power Loss", "Incoming power dropped out"],
-  ["F004", "UnderVoltage", "DC bus too low: weak or missing incoming phase"],
-  ["F005", "OverVoltage", "DC bus too high: decel too fast or high line voltage"],
+  ["F004", "Undervoltage", "DC bus too low: weak or missing incoming phase"],
+  ["F005", "Overvoltage", "DC bus too high: deceleration too fast or high line voltage"],
   ["F006", "Motor Stalled", "Motor can't accelerate the load"],
   ["F007", "Motor Overload", "Motor current over P033 too long: check load and P033"],
-  ["F008", "Heatsink OvrTmp", "Drive too hot: check airflow, fan and ambient"],
-  ["F012", "HW OverCurrent", "Very high current: short, or accel too fast"],
+  ["F008", "Heatsink Overtemperature", "Drive too hot: check airflow, fan and ambient"],
+  ["F012", "Hardware Overcurrent", "Very high current: short, or acceleration too fast"],
   ["F013", "Ground Fault", "Current to ground: check motor and cable insulation"],
-  ["F015", "Load Loss", "Current dropped too low, e.g. a broken belt"],
-  ["F021", "Output Ph Loss", "A motor phase is open"],
-  ["F029", "Analog In Loss", "4-20 mA or 0-10 V speed signal lost"],
-  ["F033", "Auto Rstrt Tries", "Auto restarts ran out"],
-  ["F038-F040", "Phase U/V/W to Gnd", "A motor phase is shorted to ground"],
+  ["F015", "Load Loss", "Current dropped too low, for example a broken belt"],
+  ["F021", "Output Phase Loss", "A motor phase is open"],
+  ["F029", "Analog Input Loss", "4-20 mA or 0-10 V speed signal lost"],
+  ["F033", "Auto Restart Tries", "Auto restarts ran out"],
+  ["F038-F040", "Phase U/V/W to Ground", "A motor phase is shorted to ground"],
   ["F041-F043", "Phase UV/UW/VW Short", "Two motor phases shorted together"],
-  ["F048", "Params Defaulted", "Parameters were reset to factory"],
+  ["F048", "Parameters Defaulted", "Parameters were reset to factory"],
   ["F059", "Safety Open", "Safe torque off inputs are open"],
-  ["F063", "SW OverCurrent", "Current over the software limit"],
+  ["F063", "Software Overcurrent", "Current over the software limit"],
   ["F064", "Drive Overload", "Drive's own current rating exceeded"],
-  ["F071", "DSI Net Loss", "Lost the network on the DSI port"],
-  ["F072", "Opt Net Loss", "Lost the network on the option card"],
-  ["F073", "EN Net Loss", "Lost the network on the built-in EtherNet/IP"],
+  ["F071", "DSI Network Loss", "Lost the network on the DSI port"],
+  ["F072", "Option Card Network Loss", "Lost the network on the option card"],
+  ["F073", "EtherNet/IP Network Loss", "Lost the network on the built-in EtherNet/IP"],
   ["F080", "Autotune Failure", "Autotune didn't finish"],
-  ["F081", "DSI Comm Loss", "Lost the DSI device (keypad or adapter)"],
-  ["F082", "Opt Comm Loss", "Lost communication with the option card"],
-  ["F083", "EN Comm Loss", "Lost the I/O connection from the PLC on EtherNet/IP"],
-  ["F100", "Parameter Chksum", "Saved parameters are corrupt: reset and reload"],
+  ["F081", "DSI Communication Loss", "Lost the DSI device (keypad or adapter)"],
+  ["F082", "Option Card Communication Loss", "Lost communication with the option card"],
+  ["F083", "EtherNet/IP Communication Loss", "Lost the I/O connection from the PLC on EtherNet/IP"],
+  ["F100", "Parameter Checksum", "Saved parameters are corrupt: reset and reload"],
   ["F111", "Safety Hardware", "Safety circuit hardware fault"]
 ];
 function pfList(rows) {
@@ -1307,8 +1307,8 @@ function renderPF() {
   var about = document.createElement("details");
   about.className = "card about";
   about.innerHTML = "<summary>Notes</summary>" +
-    "<p>The most-used PowerFlex 525 parameters and faults, as a quick guide. Names are shown the way the " +
-    "drive displays them. Check the PowerFlex 520-series user manual for your drive's firmware before " +
+    "<p>The most-used PowerFlex 525 parameters and faults, as a quick guide. Names are spelled out in full; the " +
+    "drive's display shortens many of them. Check the PowerFlex 520-series user manual for your drive's firmware before " +
     "changing settings.</p>" +
     "<p>Clear a fault with the Stop key, a reset from the PLC, or by cycling power once the cause is fixed.</p>";
   app.appendChild(about);
