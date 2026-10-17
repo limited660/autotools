@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-<title>Automation Calculators</title>
+<title>Automation Tools</title>
 <meta name="description" content="Conveyor speed, sensor block time, transfer gap, robot orientation and sensor wire colors.">
 <meta name="theme-color" content="#1e293b">
 <link rel="manifest" href="manifest.json">
@@ -405,7 +405,7 @@ nav button[aria-selected="true"] { opacity: 1; color: var(--accent); border-top-
 </head>
 <body>
 <header>
-  <h1>Automation Calculators</h1>
+  <h1>Automation Tools</h1>
   <button id="theme" type="button"></button>
 </header>
 <div id="bar"></div>
@@ -464,10 +464,11 @@ var DEF = {
   c4: { m: "e2q", x: 0, y: 0, z: 0, q1: 1, q2: 0, q3: 0, q4: 0 },
   c5: { pins: 4 }
 };
-var KEY = "convcalc-v1";
+var KEY = "autotools-v1";
 var S = JSON.parse(JSON.stringify(DEF));
 try {
-  var saved = JSON.parse(localStorage.getItem(KEY) || "null");
+  // Older versions saved under "convcalc-v1"; carry those values over
+  var saved = JSON.parse(localStorage.getItem(KEY) || localStorage.getItem("convcalc-v1") || "null");
   if (saved) {
     ["c1", "c2", "c3", "c4", "c5"].forEach(function (c) {
       if (saved[c]) for (var k in S[c]) if (k in saved[c]) S[c][k] = saved[c][k];

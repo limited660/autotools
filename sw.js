@@ -1,7 +1,7 @@
 // Offline support. The version is set in version.js; bump it there
 // whenever any file changes so phones download the new copy.
 importScripts("version.js");
-var VERSION = "convcalc-" + APP_VERSION;
+var VERSION = "autotools-" + APP_VERSION;
 var FILES = ["./", "index.html", "version.js", "manifest.json", "icon-192.png", "icon-512.png"];
 
 // GitHub Pages lets browsers reuse files for 10 minutes. Always ask the
