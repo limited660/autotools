@@ -92,8 +92,7 @@ header h1 {
   white-space: nowrap;
 }
 
-/* ---- Result bar: shown whenever the main result is out of view. It sits
-   just above the tab bar, or just above the keypad while typing ---- */
+/* ---- Result bar: only while the keypad is open, just above it ---- */
 #bar {
   position: fixed;
   left: 0;
@@ -942,11 +941,8 @@ function renderResults() {
 }
 
 // ---- Result bar ----
-// Whenever the main result is out of view (scrolled away or behind the
-// keypad), show it in a bar at the bottom: above the tab bar normally, or
-// above the keypad while typing (when the tab bar is hidden).
+// While the keypad is open, show the result in a bar just above it.
 var typing = false, barQueued = false;
-var navEl = document.querySelector("nav");
 function setTyping(on) {
   typing = on;
   document.body.classList.toggle("typing", on);
@@ -1005,19 +1001,13 @@ function placeBar() {
   barQueued = true;
   requestAnimationFrame(function () {
     barQueued = false;
-    if (!resultsBox) { bar.classList.remove("show"); return; }
-    // The part of the page you can actually see: not under the keypad,
-    // and not under the tab bar when it's showing
+    // Only shown while the keypad is open, sitting just above it
+    var show = typing && !!resultsBox;
+    bar.classList.toggle("show", show);
+    if (!show) return;
     var vv = window.visualViewport;
-    var top = vv ? vv.offsetTop : 0;
     var bottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
-    if (!typing) bottom -= navEl.offsetHeight;
-    // While the keypad is open the bar always shows. Otherwise it hides
-    // when the whole Results box can be seen.
-    var r = resultsBox.getBoundingClientRect();
-    var covered = typing || r.top < top || r.bottom > bottom;
-    bar.classList.toggle("show", covered);
-    if (covered) bar.style.top = (bottom - bar.offsetHeight) + "px";
+    bar.style.top = (bottom - bar.offsetHeight) + "px";
   });
 }
 if (window.visualViewport) {
