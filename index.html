@@ -657,6 +657,7 @@ main { padding-top: 6px; }
 label.field { display: grid; grid-template-columns: 1fr 55%; align-items: center; column-gap: 8px;
   background: var(--card2); border-radius: 14px; padding: 4px 4px 4px 14px; margin-bottom: 8px; }
 label.field > span { text-align: left; margin: 0; font-size: 15px; }
+label.field > span small { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-top: 1px; }
 label.field .fielderr { grid-column: 1 / -1; text-align: left; margin: 2px 0 4px; }
 .inwrap input { background: var(--card); border: 0; border-radius: 11px; font-size: 20px; padding: 10px 44px 10px 10px; text-align: right; }
 .inwrap em { right: 10px; font-size: 13px; }
@@ -722,7 +723,7 @@ footer { padding-bottom: calc(var(--nav-h) + 40px + env(safe-area-inset-bottom))
     Reference</button>
   <button role="tab" data-group="robot">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h8"/><path d="M8 20v-5"/><circle cx="8" cy="13" r="2"/><path d="M9.5 11.5l5-5"/><circle cx="16" cy="5" r="2"/><path d="M17.5 6.5l2.5 2.5"/></svg>
-    Robot</button>
+    ABB Robot</button>
 </nav>
 <div id="toast"></div>
 <script src="version.js"></script>
@@ -1105,7 +1106,7 @@ function fieldEl(c, f) {
 function pasteEl() {
   var lab = document.createElement("label");
   lab.className = "field";
-  lab.innerHTML = "<span>Paste quaternion [q1, q2, q3, q4]</span>";
+  lab.innerHTML = "<span>Paste Quaternion<small>[q1, q2, q3, q4]</small></span>";
   var wrap = document.createElement("div");
   wrap.className = "inwrap";
   var inp = document.createElement("input");
@@ -2773,7 +2774,7 @@ var SWIPE_SUBS = {
   20: ["c20", "k", ["move", "io", "points", "data"]]
 };
 var GROUP_ORDER = ["conv", "ctrl", "ref", "robot"];
-var GROUP_NAMES = { conv: "Conveyor", ctrl: "Controls", ref: "Reference", robot: "Robot" };
+var GROUP_NAMES = { conv: "Conveyor", ctrl: "Controls", ref: "Reference", robot: "ABB Robot" };
 // Returns what a swipe one step left (+1) or right (-1) does, or null if there's nothing that way
 function pageAt(step, onSub, onNav) {
   if (onNav) {
