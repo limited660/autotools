@@ -2099,6 +2099,14 @@ function slide(x, ms, sub) {
   el.style.transition = ms ? "transform " + ms + "ms ease-out" : "none";
   el.style.transform = x ? "translateX(" + x + "px)" : "";
 }
+// Is this point on the selector or the content under it? Goes by position, not by what's
+// under the finger, so a quick second swipe still counts while the content is sliding
+function onChoiceArea(x, y) {
+  var box = app.querySelector(".swipebox"), card = box && box.parentNode, seg = card && card.querySelector(".seg");
+  if (!seg) return false;
+  var c = card.getBoundingClientRect(), top = seg.getBoundingClientRect().top;
+  return x >= c.left && x <= c.right && y >= top && y <= c.bottom;
+}
 // Listens on the whole screen so the empty space under the page swipes too
 document.addEventListener("touchstart", function (e) {
   var t = e.target;
@@ -2109,7 +2117,7 @@ document.addEventListener("touchstart", function (e) {
   if (e.touches.length !== 1 || t.closest("input, select, textarea, header, #upd, #bar") ||
       (window.visualViewport && window.visualViewport.scale > 1.01)) { swipe = null; return; }
   swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), dx: 0, side: false,
-    sub: !!SWIPE_SUBS[S.tab] && !!t.closest(".swipebox, .seg"), nav: !!t.closest("nav") };
+    sub: !!SWIPE_SUBS[S.tab] && onChoiceArea(e.touches[0].clientX, e.touches[0].clientY), nav: !!t.closest("nav") };
 }, { passive: true });
 document.addEventListener("touchmove", function (e) {
   if (!swipe) return;
