@@ -892,7 +892,7 @@ function renderWires() {
   var list = WIRES.slice(0, S.c5.pins);
   var t = '<div class="wires">';
   list.forEach(function (w) {
-    t += '<div class="wire tap" data-copy="Pin ' + w.pin + " " + w.color + " (" + w.code + ") " + w.use + '">' +
+    t += '<div class="wire">' +
       '<div class="pin">' + w.pin + "</div>" +
       '<div class="swatch" style="background:' + w.hex + '"></div>' +
       '<div class="winfo"><b>' + w.color + " <small>" + w.code + "</small></b><span>" + w.use + "</span></div></div>";
@@ -901,9 +901,6 @@ function renderWires() {
   var box = document.createElement("div");
   box.innerHTML = t;
   card.appendChild(box);
-  card.querySelectorAll("[data-copy]").forEach(function (el) {
-    el.onclick = function () { copyText(el.dataset.copy, "Copied pin " + el.querySelector(".pin").textContent); };
-  });
   app.appendChild(card);
 
   var about = document.createElement("details");
