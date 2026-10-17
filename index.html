@@ -249,7 +249,7 @@ label.field > span { display: block; font-size: 16px; font-weight: 600; color: v
 }
 .step.up::after { width: 3px; height: 16px; }
 .step:active { background: var(--accent); color: var(--accent-text); }
-/* ---- Wires tab ---- */
+/* ---- Sensors tab: cable colors ---- */
 .wires { display: flex; flex-direction: column; gap: 8px; }
 .wire {
   display: flex;
@@ -490,6 +490,15 @@ html.nozoom #app { touch-action: pan-y; }
 .pf b { color: var(--accent); font-size: 16px; grid-row: span 2; }
 .pf span { font-weight: 600; font-size: 16px; }
 .pf small { color: var(--muted); font-size: 14px; line-height: 1.3; }
+.wiring { width: 100%; height: auto; display: block; margin: 4px 0 6px; color: var(--text); fill: none;
+  stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.wiring path { stroke-width: 2.5; }
+.wiring text { fill: currentColor; stroke: none; font-size: 12px; font-weight: 600; }
+.wiring .term { fill: var(--card); }
+.wiring path.edge { stroke: var(--muted); stroke-width: 4.5; opacity: .5; }
+.wirekey { display: flex; justify-content: center; gap: 16px; margin-top: 8px; font-size: 14px; color: var(--muted); }
+.wirekey span::before { content: ""; display: inline-block; width: 16px; height: 3px; border-radius: 2px;
+  background: var(--c); vertical-align: middle; margin-right: 6px; box-shadow: 0 0 0 1px var(--line); }
 .secgap { height: 16px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
 .secnote { margin: 0 0 10px; font-size: 14px; color: var(--muted); text-align: center; }
 .sym.wide svg { max-width: 300px; }
@@ -605,7 +614,8 @@ var DEF = {
   c9: { k: "elec" },
   c11: { mask: "255.255.255.0", ip: "" },
   c14: { k: "unc" },
-  c15: { k: "par" }
+  c15: { k: "par" },
+  c16: { ph: 3, pu: "hp", p: 5, v: 480, eff: 90, pf: 85 }
 };
 var KEY = "autotools-v1";
 var S = JSON.parse(JSON.stringify(DEF));
@@ -613,7 +623,7 @@ try {
   // Older versions saved under "convcalc-v1"; carry those values over
   var saved = JSON.parse(localStorage.getItem(KEY) || localStorage.getItem("convcalc-v1") || "null");
   if (saved) {
-    ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c11", "c14", "c15"].forEach(function (c) {
+    ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c11", "c14", "c15", "c16"].forEach(function (c) {
       if (saved[c]) for (var k in S[c]) if (k in saved[c]) S[c][k] = saved[c][k];
     });
     if (saved.tab) S.tab = saved.tab;
@@ -716,6 +726,16 @@ function analogFields() {
   if (a.m === "s2v") list.push({ k: "sig", label: "Signal Reading", unit: u, neg: a.t !== "ma", raw: true });
   else list.push({ k: "val", label: "Value", unit: "", neg: true, raw: true });
   return list;
+}
+// Motor FLA: power box follows the HP / kW choice
+var KW_PER_HP = 0.7457;
+function motorFields() {
+  return [
+    { k: "p", label: "Motor Power", unit: S.c16.pu === "hp" ? "HP" : "kW", raw: true },
+    { k: "v", label: "Voltage", d: 0, unit: "V" },
+    { k: "eff", label: "Efficiency", d: 0, unit: "%", min: 1, max: 100 },
+    { k: "pf", label: "Power Factor", d: 0, unit: "%", min: 1, max: 100 }
+  ];
 }
 function sigRange() {
   var a = S.c7;
@@ -989,7 +1009,7 @@ function quatToEuler(q) {
 
 var resultsBox;
 
-// ---- Wires tab: sensor cable colors and pin numbers ----
+// ---- Sensors tab: cable colors and pin numbers, PNP / NPN hookup, NO / NC ----
 // Standard M8 / M12 sensor cable colors (IEC 60947-5-2 / EN 60947-5-2)
 var WIRES = [
   { pin: 1, color: "Brown", code: "BN", hex: "#8b5a2b", use: "+V supply (10–30 V DC)" },
@@ -1001,18 +1021,33 @@ var WIRES = [
 function renderWires() {
   var card = document.createElement("div");
   card.className = "card";
-  card.appendChild(seg("Cable", [[4, "4-pin"], [5, "5-pin"]], S.c5.pins, function (v) {
+  var k = S.c5.pins; // 4 or 5 (cable colors), "pnp" or "nonc"
+  if ([4, 5, "pnp", "nonc"].indexOf(k) < 0) k = S.c5.pins = 4;
+  card.appendChild(seg("Sensors", [[4, "4-Pin"], [5, "5-Pin"], ["pnp", "PNP / NPN"], ["nonc", "NO / NC"]], k, function (v) {
     S.c5.pins = v; save(); render();
   }));
-  var list = WIRES.slice(0, S.c5.pins);
-  var t = '<div class="wires">';
-  list.forEach(function (w) {
-    t += '<div class="wire">' +
-      '<div class="pin">' + w.pin + "</div>" +
-      '<div class="swatch" style="background:' + w.hex + '"></div>' +
-      '<div class="winfo"><b>' + w.color + " <small>" + w.code + "</small></b><span>" + w.use + "</span></div></div>";
-  });
-  t += "</div>";
+  var t;
+  if (k === "pnp") {
+    t = '<h2 class="sechead">PNP (Sourcing) Sensor</h2>' +
+      '<p class="secnote">Wire to a sinking input card: the card common goes to 0 V.</p>' + sensorDiagram(true) +
+      '<div class="secgap"></div><h2 class="sechead">NPN (Sinking) Sensor</h2>' +
+      '<p class="secnote">Wire to a sourcing input card: the card common goes to +24 V.</p>' + sensorDiagram(false) +
+      '<div class="wirekey"><span style="--c:#8b5a2b">Brown +V</span><span style="--c:#111111">Black Out</span>' +
+      '<span style="--c:#2563eb">Blue 0 V</span></div>' +
+      '<div class="wirekey"><span style="--c:#2563eb">Blue +24 V</span>' +
+      '<span style="--c:repeating-linear-gradient(90deg,#2563eb 0 4px,#f8fafc 4px 8px)">Blue/White 0 V</span></div>';
+  } else if (k === "nonc") {
+    t = pfList(SENSOR_TEXT.nonc);
+  } else {
+    t = '<div class="wires">';
+    WIRES.slice(0, k).forEach(function (w) {
+      t += '<div class="wire">' +
+        '<div class="pin">' + w.pin + "</div>" +
+        '<div class="swatch" style="background:' + w.hex + '"></div>' +
+        '<div class="winfo"><b>' + w.color + " <small>" + w.code + "</small></b><span>" + w.use + "</span></div></div>";
+    });
+    t += "</div>";
+  }
   var box = document.createElement("div");
   box.className = "swipebox"; // slides on its own when swiping between choices
   box.innerHTML = t;
@@ -1021,11 +1056,13 @@ function renderWires() {
 
   var about = document.createElement("details");
   about.className = "card about";
-  about.innerHTML = "<summary>Notes</summary>" +
+  about.innerHTML = "<summary>Notes</summary>" + (typeof k === "number" ?
     "<p>Standard colors for M8 and M12 sensor cables (IEC 60947-5-2). " +
     "3-wire sensors use pins 1, 3 and 4 only: brown +V, blue 0 V, black output.</p>" +
     "<p>On a PNP sensor the output switches to +V; on an NPN sensor it switches to 0 V.</p>" +
-    "<p>Pin 2 and pin 5 vary between makers. Always check the device's data sheet before wiring.</p>";
+    "<p>Pin 2 and pin 5 vary between makers. Always check the device's data sheet before wiring.</p>" :
+    "<p>Wire colors are the standard ones: BN brown +V, BK black output, BU blue 0 V. Match the sensor type to the " +
+    "input card, or the input will never turn on. Many cards can do either, set by how the common is wired.</p>");
   app.appendChild(about);
   setBar(["", ""]);
 }
@@ -1294,7 +1331,7 @@ function pfList(rows) {
 function renderPF() {
   var card = document.createElement("div");
   card.className = "card";
-  card.appendChild(seg("Show", [["par", "Parameters"], ["flt", "Faults"]], S.c15.k, function (v) {
+  card.appendChild(seg("PowerFlex 525", [["par", "Parameters"], ["flt", "Faults"]], S.c15.k, function (v) {
     S.c15.k = v; save(); render();
   }));
   var box = document.createElement("div");
@@ -1315,12 +1352,51 @@ function renderPF() {
   setBar(["", ""]);
 }
 
+// ---- Sensors tab, part 2: PNP / NPN wiring and NO / NC ----
+// Hook-up drawing for a 3-wire sensor into a PLC input card
+function sensorDiagram(pnp) {
+  // sensor leads in their real colors (brown, black, blue); panel wiring: +24 V blue, 0 V blue/white
+  var BLU = "#2563eb", WHT = "#f8fafc", BN = "#8b5a2b", BK = "#111111", BU = "#2563eb";
+  function w(d, c) { return '<path d="' + d + '" stroke="' + c + '"/>'; }
+  // a thin light edge so the black wire shows on the dark theme
+  function lead(d, c) { return '<path d="' + d + '" class="edge"/>' + w(d, c); }
+  // blue/white: a white wire with a blue stripe
+  function stripe(d) { return lead(d, WHT) + '<path d="' + d + '" stroke="' + BLU + '" stroke-dasharray="16 12"/>'; }
+  // where a wire lands on a supply line: same terminal mark as the sensor and PLC connections
+  function dot(x, y) { return '<circle cx="' + x + '" cy="' + y + '" r="3.5" class="term"/>'; }
+  function term(x, y, label, right) {
+    return '<circle cx="' + x + '" cy="' + y + '" r="3.5" class="term"/><text x="' + (right ? x - 8 : x + 8) + '" y="' +
+      (y + 4) + '" text-anchor="' + (right ? "end" : "start") + '">' + label + "</text>";
+  }
+  var com = pnp ? 112 : 62; // the card's common goes to 0 V for PNP, +24 V for NPN
+  return '<svg viewBox="0 0 320 172" class="wiring" role="img" aria-label="' + (pnp ? "PNP" : "NPN") + ' sensor wiring">' +
+    '<text x="8" y="12">+24 V DC</text><text x="8" y="168">0 V</text>' +
+    w("M8 20H312", BLU) + stripe("M8 152H312") +
+    '<rect x="30" y="48" width="90" height="76" rx="6"/><text x="75" y="42" text-anchor="middle">' + (pnp ? "PNP" : "NPN") + " Sensor</text>" +
+    '<rect x="210" y="48" width="90" height="76" rx="6"/><text x="255" y="42" text-anchor="middle">PLC Input</text>' +
+    lead("M120 64H145V20", BN) + dot(145, 20, BLU) +
+    lead("M120 112H155V152", BU) + dot(155, 152, BLU) +
+    lead("M120 86H210", BK) +
+    (pnp ? stripe("M210 " + com + "H185V152") + dot(185, 152, BLU) : w("M210 " + com + "H185V20", BLU) + dot(185, 20, BLU)) +
+    term(120, 64, "BN +", 1) + term(120, 86, "BK out", 1) + term(120, 112, "BU 0V", 1) +
+    term(210, 86, "IN") + term(210, com, "COM") + "</svg>";
+}
+var SENSOR_TEXT = {
+  nonc: [
+    ["NO", "Normally Open", "Output turns on when the sensor sees its target. On a photo-eye this is often called light-on or dark-on, depending on the mode."],
+    ["NC", "Normally Closed", "Output is on with nothing there and turns off when the target shows up."],
+    ["Tip", "Fail-safe wiring", "Use NC (on when healthy) for anything that must stop the machine, so a cut wire or dead sensor reads as tripped."],
+    ["PNP", "Sourcing", "Output switches +24 V to the load. Most common in North America and Europe."],
+    ["NPN", "Sinking", "Output switches the load to 0 V. Common on older and Asian equipment."]
+  ]
+};
+
 // Tools are grouped; the bottom bar picks the group, the strip under the
 // header picks the page within it
 var GROUPS = {
   conv: [[1, "Conveyor PPM"], [2, "Sensor Timing"], [3, "Pack Gapping"], [6, "VFD"]],
-  ctrl: [[7, "Analog"], [8, "Encoder"], [11, "IP/Subnet"]],
-  ref: [[5, "Wires"], [9, "Symbols"], [12, "AWG"], [14, "Tap Drill"], [15, "PF525"]],
+  ctrl: [[7, "Analog"], [8, "Encoder"], [11, "IP/Subnet"], [16, "Motor FLA"]],
+  ref: [[5, "Sensors"], [9, "Symbols"], [12, "AWG"], [14, "Tap Drill"], [15, "PF525"]],
   robot: [[4, "Orientation"]]
 };
 function groupOf(t) {
@@ -1620,7 +1696,7 @@ function render() {
 function renderPage() {
   // The old Valves page now lives on the Symbols page
   if (S.tab === 10) { S.tab = 9; S.c9.k = "valves"; }
-  if (S.tab === 13) S.tab = 7; // the AI wiring page was removed
+  if (!GROUPS[groupOf(S.tab)].some(function (x) { return x[0] === S.tab; })) S.tab = DEF.tab; // a removed page
   setZoom(S.tab === 9);
   for (var g in S.last) if (S.last[g] === 10 || groupOf(S.last[g]) !== g) S.last[g] = DEF.last[g];
   invalid = {};
@@ -1714,6 +1790,15 @@ function renderPage() {
     card.appendChild(seg("Convert", [["e2q", "Angles → Quaternion"], ["q2e", "Quaternion → Angles"]], S.c4.m, function (v) {
       S.c4.m = v; save(); render();
     }));
+  } else if (S.tab === 16) {
+    card.appendChild(seg("Supply", [[3, "3-Phase"], [1, "Single-Phase"]], S.c16.ph, function (v) {
+      S.c16.ph = v; save(); render();
+    }));
+    card.appendChild(seg("Power Units", [["hp", "HP"], ["kw", "kW"]], S.c16.pu, function (v) {
+      // keep the same motor, just shown in the other unit
+      if (v !== S.c16.pu) S.c16.p = +(v === "kw" ? S.c16.p * KW_PER_HP : S.c16.p / KW_PER_HP).toFixed(2);
+      S.c16.pu = v; save(); render();
+    }));
   } else {
     card.appendChild(seg("Length Units", [["in", "Inches"], ["mm", "mm"]], S[c].u, function (v) {
       UNIT_TABS.forEach(function (k) { S[k].u = v; }); // every page follows
@@ -1731,6 +1816,7 @@ function renderPage() {
   } else if (S.tab === 6) list = S.c6.m === "fpm" ? FIELDS.c6fpm : FIELDS.c6hz;
   else if (S.tab === 7) list = analogFields();
   else if (S.tab === 8) list = FIELDS.c8;
+  else if (S.tab === 16) list = motorFields();
   else list = S.c4.m === "e2q" ? FIELDS.c4e : FIELDS.c4q;
   curList = list;
 
@@ -1890,6 +1976,15 @@ function describe() {
       p("Quaternions you enter are normalized first, so q1&sup2; + q2&sup2; + q3&sup2; + q4&sup2; = 1. " +
         "Values are shown to 6 decimal places. Note that OrientZYX takes the angles as Z, Y, X.");
   }
+  if (S.tab === 16) {
+    return p("Estimates a motor's full-load current from its power, voltage, efficiency and power factor. " +
+        "Use it when the nameplate is missing or to sanity-check a reading.") +
+      fm("Input kW = motor kW &divide; efficiency &nbsp;&middot;&nbsp; kVA = input kW &divide; power factor") +
+      fm("3-phase amps = kVA &times; 1000 &divide; (&radic;3 &times; volts) &nbsp;&middot;&nbsp; Single-phase amps = kVA &times; 1000 &divide; volts") +
+      p("1 HP = 0.7457 kW. Typical motors run 85&ndash;95% efficiency and 80&ndash;90% power factor at full load. " +
+        "For sizing wire, breakers and overloads, use the motor nameplate or the NEC full-load current tables, " +
+        "which run higher than this estimate.");
+  }
   if (S.c3.m === "gap") {
     return p("Finds the gap you get when product moves from conveyor A onto conveyor B " +
         "running at a different speed. The time between products stays the same, " +
@@ -2042,6 +2137,18 @@ function renderResults() {
       row("Resolution", resTxt[0], resTxt[1], resTxt[0]) +
       row("Input Frequency at " + fmt(e8.f, 0) + " FPM", fA >= 1000 ? fmt(fA / 1000, 2) + " kHz" : fmt(fA, 0) + " Hz") + "</div>";
     sum = ["Counts", fmt(cnt, 1)];
+  } else if (S.tab === 16) {
+    var m16 = S.c16;
+    if (m16.v === 0) return stop();
+    var kwOut = m16.pu === "hp" ? m16.p * KW_PER_HP : m16.p;
+    var kwIn = kwOut / (m16.eff / 100), kva = kwIn / (m16.pf / 100);
+    var amps = kva * 1000 / (m16.ph === 3 ? Math.sqrt(3) * m16.v : m16.v);
+    h += big("Full-Load Amps (Estimated)", fmt(amps, 1), "A");
+    h += '<div class="rows">' +
+      (m16.pu === "hp" ? row("Motor Power", fmt(kwOut, 2) + " kW") : row("Motor Power", fmt(kwOut / KW_PER_HP, 2) + " HP")) +
+      row("Input Power", fmt(kwIn, 2) + " kW") +
+      row("Apparent Power", fmt(kva, 2) + " kVA") + "</div>";
+    sum = ["FLA", fmt(amps, 1) + " A"];
   } else {
     var c4 = S.c4;
     if (c4.m === "e2q") {
@@ -2182,7 +2289,7 @@ var swipe = null;
 // On Wires, Symbols and Tap Drill a swipe on the selector or the content under it steps through
 // the page's own choices (cable, symbol type, thread); a swipe anywhere else changes page
 var SWIPE_SUBS = {
-  5: ["c5", "pins", [4, 5]],
+  5: ["c5", "pins", [4, 5, "pnp", "nonc"]],
   9: ["c9", "k", ["elec", "pneu", "hyd", "valves"]],
   14: ["c14", "k", ["unc", "unf", "m"]],
   15: ["c15", "k", ["par", "flt"]]
