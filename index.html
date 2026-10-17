@@ -189,6 +189,30 @@ label.field > span { display: block; font-size: 16px; font-weight: 600; color: v
   font-weight: 600;
   pointer-events: none;
 }
+/* - / + step buttons on the FPM boxes */
+.inwrap.stepper input { padding-left: 56px; padding-right: 96px; }
+.inwrap.stepper em { right: 56px; }
+.step {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.step.down { left: 6px; }
+.step.up { right: 6px; }
+.step:active { background: var(--accent); color: var(--accent-text); }
 .inwrap input.paste { font-size: 18px; padding-left: 12px; padding-right: 12px; }
 .pm {
   position: absolute;
@@ -598,6 +622,34 @@ function fieldEl(c, f) {
   });
   wrap.appendChild(inp);
   wrap.appendChild(em);
+  if (f.unit === "FPM") {
+    // - / + buttons: tap to change by 1 FPM, hold to keep going
+    wrap.classList.add("stepper");
+    [["down", "−", -1], ["up", "+", 1]].forEach(function (b) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "step " + b[0];
+      btn.textContent = b[1];
+      btn.setAttribute("aria-label", (b[2] > 0 ? "Increase " : "Decrease ") + f.label + " by 1");
+      var hold, rep;
+      function bump() {
+        var v = Math.max(0, S[c][f.k] + b[2]);
+        inp.value = fmt(v, 0);
+        inp.dispatchEvent(new Event("input"));
+        if (document.activeElement !== inp) inp.value = shown(c, f);
+      }
+      function stop() { clearTimeout(hold); clearInterval(rep); }
+      btn.addEventListener("pointerdown", function (e) {
+        e.preventDefault(); // don't steal focus or open the keypad
+        bump();
+        hold = setTimeout(function () { rep = setInterval(bump, 80); }, 400);
+      });
+      ["pointerup", "pointerleave", "pointercancel"].forEach(function (ev) {
+        btn.addEventListener(ev, stop);
+      });
+      wrap.appendChild(btn);
+    });
+  }
   if (f.neg) {
     // Some number pads have no minus key, so give negatives a button
     var pm = document.createElement("button");
