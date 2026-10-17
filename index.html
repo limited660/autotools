@@ -382,13 +382,41 @@ label.field > span { display: block; font-size: 16px; font-weight: 600; color: v
   text-align: center;
 }
 
-#ver {
+footer {
   text-align: center;
-  font-size: 11px;
-  color: var(--muted);
-  opacity: .6;
   padding: 0 16px calc(var(--nav-h) + 16px + env(safe-area-inset-bottom));
 }
+#ver {
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  color: var(--muted);
+  opacity: .7;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+#ver u { text-underline-offset: 2px; }
+/* ---- What's New sheet ---- */
+#log { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.5); display: flex; align-items: flex-end; }
+#log[hidden] { display: none; }
+.logsheet {
+  width: 100%;
+  max-width: 520px;
+  max-height: 85vh;
+  margin: 0 auto;
+  overflow-y: auto;
+  background: var(--card);
+  border-radius: 16px 16px 0 0;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+}
+.loghead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.loghead h2 { margin: 0; font-size: 18px; }
+#logx { border: 1px solid var(--line); background: transparent; color: var(--text); border-radius: 8px;
+  padding: 6px 12px; font-weight: 600; cursor: pointer; }
+.logv { margin: 14px 0 4px; font-size: 15px; color: var(--accent); }
+.logv small { color: var(--muted); font-weight: 600; margin-left: 6px; }
+.logsheet ul { margin: 0; padding-left: 20px; }
+.logsheet li { margin: 4px 0; line-height: 1.4; }
 
 /* ---- Bottom tab bar ---- */
 nav {
@@ -556,7 +584,13 @@ html.nozoom #app { touch-action: pan-y; }
 <div id="bar"></div>
 <main id="app"></main>
 <button id="upd" type="button" hidden></button>
-<footer id="ver"></footer>
+<footer><button id="ver" type="button"></button></footer>
+<div id="log" hidden>
+  <div class="logsheet" role="dialog" aria-label="What's New">
+    <div class="loghead"><h2>What's New</h2><button id="logx" type="button">Close</button></div>
+    <div id="logbody"></div>
+  </div>
+</div>
 <nav role="tablist">
   <button role="tab" data-group="conv">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="13" width="20" height="5" rx="2.5"/><circle cx="5.5" cy="15.5" r="1"/><circle cx="18.5" cy="15.5" r="1"/><rect x="8" y="6" width="8" height="7" rx="1"/></svg>
@@ -573,6 +607,7 @@ html.nozoom #app { touch-action: pan-y; }
 </nav>
 <div id="toast"></div>
 <script src="version.js"></script>
+<script src="changelog.js"></script>
 
 <script>
 // ---- Rounding (conveyor tabs: half rounds up, like the TI version) ----
@@ -630,6 +665,7 @@ try {
     if (saved.theme) S.theme = saved.theme;
     if (saved.hist) S.hist = saved.hist;
     if (saved.last) for (var g in S.last) if (saved.last[g]) S.last[g] = saved.last[g];
+    if (saved.seenVer) S.seenVer = saved.seenVer;
   }
 } catch (e) {}
 function save() {
@@ -2333,7 +2369,7 @@ document.addEventListener("touchstart", function (e) {
   // The tab strip swipes between pages; the bottom menu swipes between groups
   var ae = document.activeElement, keyboard = typing || (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName));
   if (keyboard) { swipe = null; return; } // no swiping while the keyboard is open
-  if (e.touches.length !== 1 || t.closest("input, select, textarea, header, #upd, #bar") ||
+  if (e.touches.length !== 1 || t.closest("input, select, textarea, header, #upd, #bar, #log") ||
       (window.visualViewport && window.visualViewport.scale > 1.01)) { swipe = null; return; }
   swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), dx: 0, side: false,
     sub: !!SWIPE_SUBS[S.tab] && onChoiceArea(e.touches[0].clientX, e.touches[0].clientY), nav: !!t.closest("nav") };
@@ -2385,7 +2421,37 @@ document.querySelectorAll("nav button[data-group]").forEach(function (b) {
 applyTheme();
 render();
 if (typeof APP_VERSION === "string")
-  document.getElementById("ver").textContent = APP_VERSION + (typeof APP_DATE === "string" ? " - " + APP_DATE : "");
+  document.getElementById("ver").innerHTML = APP_VERSION + (typeof APP_DATE === "string" ? " - " + APP_DATE : "") +
+    " &middot; <u>What's New</u>";
+
+// ---- What's New: tap the version at the bottom, or shown once after an update ----
+var updBtn = document.getElementById("upd"); // also used by the update check below
+var logEl = document.getElementById("log");
+function showLog() {
+  var list = typeof CHANGELOG === "object" ? CHANGELOG : [];
+  document.getElementById("logbody").innerHTML = list.length ? list.map(function (e) {
+    return '<h3 class="logv">' + e.v + "<small>" + e.d + "</small></h3><ul>" +
+      e.n.map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ul>";
+  }).join("") : "<p>No notes yet.</p>";
+  logEl.hidden = false;
+  logEl.querySelector(".logsheet").scrollTop = 0;
+}
+function hideLog() { logEl.hidden = true; }
+document.getElementById("ver").onclick = showLog;
+document.getElementById("logx").onclick = hideLog;
+logEl.onclick = function (e) { if (e.target === logEl) hideLog(); }; // tap outside the sheet
+(function () {
+  if (typeof APP_VERSION !== "string") return;
+  var cur = APP_VERSION.split(" ")[0]; // "v63 preview" -> "v63"
+  // First time after an update: offer the notes once. A brand-new install just remembers the version.
+  if (S.seenVer && S.seenVer !== cur && typeof CHANGELOG === "object" && CHANGELOG.length && CHANGELOG[0].v === cur) {
+    updBtn.textContent = "Updated to " + cur + " \u2013 See What's New";
+    updBtn.hidden = false;
+    updBtn.dataset.news = "1";
+  }
+  S.seenVer = cur;
+  save();
+})();
 
 // ---- Offline support ----
 var swReg = null;
@@ -2398,7 +2464,6 @@ if ("serviceWorker" in navigator) {
 // ---- Update check ----
 // Asks the site straight for version.js (skipping every cache) when the app opens
 // or comes back to the front. If the site has a newer version, offer a reload.
-var updBtn = document.getElementById("upd");
 function checkUpdate() {
   if (typeof APP_VERSION !== "string" || !navigator.onLine) return;
   fetch("version.js?nc=" + Date.now(), { cache: "no-store" }).then(function (r) {
@@ -2406,11 +2471,13 @@ function checkUpdate() {
   }).then(function (t) {
     var m = t.match(/APP_VERSION\s*=\s*"([^"]+)"/);
     if (!m || m[1] === APP_VERSION) return;
+    delete updBtn.dataset.news;
     updBtn.textContent = m[1] + " Ready – Tap to Update";
     updBtn.hidden = false;
   }).catch(function () {});
 }
 updBtn.onclick = function () {
+  if (updBtn.dataset.news) { delete updBtn.dataset.news; updBtn.hidden = true; showLog(); return; }
   updBtn.textContent = "Updating…";
   var done = function () { location.reload(); };
   if (swReg) swReg.update().then(done, done); else done();

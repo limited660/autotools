@@ -2,7 +2,7 @@
 // whenever any file changes so phones download the new copy.
 importScripts("version.js");
 var VERSION = "autotools-" + APP_VERSION;
-var FILES = ["./", "index.html", "version.js", "manifest.json", "icon-192.png", "icon-512.png"];
+var FILES = ["./", "index.html", "version.js", "changelog.js", "manifest.json", "icon-192.png", "icon-512.png"];
 
 // GitHub Pages lets browsers reuse files for 10 minutes. Always ask the
 // server for the current copy instead, so updates show up straight away.
