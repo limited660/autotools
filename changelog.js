@@ -1,6 +1,9 @@
 // What's New. Add a new entry at the top with every version (same number as version.js).
 // Keep each line short and in plain words: what changed for the person using the app.
 var CHANGELOG = [
+  { v: "v72", d: "10/17/2026", n: [
+    "History waits until you're done editing, so changing several boxes saves one entry instead of several"
+  ] },
   { v: "v71", d: "10/17/2026", n: [
     "Symbols type selector is plain text, like the other selectors"
   ] },

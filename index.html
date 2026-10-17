@@ -1972,6 +1972,7 @@ function renderPage() {
   for (var g in S.last) if (S.last[g] === 10 || groupOf(S.last[g]) !== g) S.last[g] = DEF.last[g];
   invalid = {};
   clearTimeout(histT);
+  histPending = false;
   var grp = groupOf(S.tab);
   S.last[grp] = S.tab;
   // Header: small app name, the group, then the open page in big type
@@ -2136,9 +2137,10 @@ function setCalc(c, saved) {
 }
 
 // ---- History: the last 10 results on each calculator ----
-// A result is saved a moment after you stop changing the entries.
+// A result is saved once you're done editing: the keypad has closed and nothing has
+// changed for a few seconds, so moving between boxes doesn't save half-finished entries.
 // Tap a saved result to put its entries back.
-var histBox = null, histT, lastSum = null;
+var histBox = null, histT, lastSum = null, histPending = false;
 var curList = []; // the input boxes on screen (for history)
 function histKey() { return "c" + S.tab; }
 function inputsText() {
@@ -2149,10 +2151,13 @@ function inputsText() {
   }).join(" · ");
 }
 function scheduleHist() {
+  histPending = true;
   clearTimeout(histT);
-  histT = setTimeout(addHist, 2000);
+  if (typing) return; // wait until the keypad closes (setTyping picks it up)
+  histT = setTimeout(addHist, 3000);
 }
 function addHist() {
+  histPending = false;
   if (!lastSum || !histBox || Object.keys(invalid).length) return;
   var c = histKey();
   var list = S.hist[c] || (S.hist[c] = []);
@@ -2474,6 +2479,9 @@ function renderResults() {
 var typing = false, barQueued = false;
 function setTyping(on) {
   typing = on;
+  // history waits while you type, and starts its countdown when the keypad closes
+  if (on) clearTimeout(histT);
+  else if (histPending) scheduleHist();
   document.body.classList.toggle("typing", on);
   placeBar();
   // Check again once the keypad has finished sliding open or closed
