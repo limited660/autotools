@@ -194,7 +194,7 @@ label.field > span { display: block; font-size: 16px; font-weight: 600; color: v
   pointer-events: none;
 }
 /* - / + step buttons on the FPM boxes */
-.inwrap.stepper input { padding-left: 56px; padding-right: 96px; }
+.inwrap.stepper input { padding-left: 96px; padding-right: 96px; } /* same on both sides so the number lines up with the other fields */
 .inwrap.stepper em { right: 56px; }
 .step {
   position: absolute;
@@ -216,6 +216,20 @@ label.field > span { display: block; font-size: 16px; font-weight: 600; color: v
 }
 .step.down { left: 6px; }
 .step.up { right: 6px; }
+/* Draw + and − as bars so they sit dead center whatever the phone's font */
+.step { padding: 0; font-size: 0; }
+.step::before, .step.up::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+}
+.step.up::after { width: 3px; height: 16px; }
 .step:active { background: var(--accent); color: var(--accent-text); }
 /* ---- Wires tab ---- */
 .wires { display: flex; flex-direction: column; gap: 8px; }
@@ -590,62 +604,62 @@ function save() {
 // neg: negatives allowed; raw: kept exactly as typed (no rounding)
 var FIELDS = {
   c1spd: [
-    { k: "L", label: "Product length", len: true },
+    { k: "L", label: "Product Length", len: true },
     { k: "g", label: "Gap", len: true },
     { k: "r", label: "Parts/min", d: 0, unit: "ppm" }
   ],
   c1rate: [
-    { k: "L", label: "Product length", len: true },
+    { k: "L", label: "Product Length", len: true },
     { k: "g", label: "Gap", len: true },
     { k: "f", label: "Speed", d: 0, unit: "FPM" }
   ],
   c2: [
-    { k: "L", label: "Product length", len: true },
-    { k: "g", label: "Gap between products", len: true },
+    { k: "L", label: "Product Length", len: true },
+    { k: "g", label: "Gap Between Products", len: true },
     { k: "f", label: "Speed", d: 0, unit: "FPM" }
   ],
   c3gap: [
-    { k: "L", label: "Product length", len: true },
+    { k: "L", label: "Product Length", len: true },
     { k: "gA", label: "Gap on A", len: true },
     { k: "a", label: "Speed A", d: 0, unit: "FPM" },
     { k: "b", label: "Speed B", d: 0, unit: "FPM" }
   ],
   c3spdA: [
-    { k: "L", label: "Product length", len: true },
+    { k: "L", label: "Product Length", len: true },
     { k: "gA", label: "Gap A Current", len: true },
     { k: "gw", label: "Gap B Desired", len: true },
-    { k: "b", label: "Speed B (current)", d: 0, unit: "FPM" }
+    { k: "b", label: "Speed B (Current)", d: 0, unit: "FPM" }
   ],
   c3spdB: [
-    { k: "L", label: "Product length", len: true },
+    { k: "L", label: "Product Length", len: true },
     { k: "gA", label: "Gap A Current", len: true },
     { k: "gw", label: "Gap B Desired", len: true },
-    { k: "a", label: "Speed A (current)", d: 0, unit: "FPM" }
+    { k: "a", label: "Speed A (Current)", d: 0, unit: "FPM" }
   ],
   c4e: [
-    { k: "x", label: "X angle", unit: "°", neg: true, raw: true },
-    { k: "y", label: "Y angle", unit: "°", neg: true, raw: true },
-    { k: "z", label: "Z angle", unit: "°", neg: true, raw: true }
+    { k: "x", label: "X Angle", unit: "°", neg: true, raw: true },
+    { k: "y", label: "Y Angle", unit: "°", neg: true, raw: true },
+    { k: "z", label: "Z Angle", unit: "°", neg: true, raw: true }
   ],
   c6fpm: [
-    { k: "rpm", label: "Motor nameplate RPM", d: 0, unit: "RPM" },
-    { k: "hz0", label: "Motor base frequency", d: 0, unit: "Hz" },
-    { k: "ratio", label: "Gear ratio (input : 1)", d: 2, unit: ": 1" },
-    { k: "D", label: "Drum / sprocket diameter", len: true },
-    { k: "hz", label: "Drive frequency", d: 1, unit: "Hz" }
+    { k: "rpm", label: "Motor Nameplate RPM", d: 0, unit: "RPM" },
+    { k: "hz0", label: "Motor Base Frequency", d: 0, unit: "Hz" },
+    { k: "ratio", label: "Gear Ratio (Input : 1)", d: 2, unit: ": 1" },
+    { k: "D", label: "Drum / Sprocket Diameter", len: true },
+    { k: "hz", label: "Drive Frequency", d: 1, unit: "Hz" }
   ],
   c6hz: [
-    { k: "rpm", label: "Motor nameplate RPM", d: 0, unit: "RPM" },
-    { k: "hz0", label: "Motor base frequency", d: 0, unit: "Hz" },
-    { k: "ratio", label: "Gear ratio (input : 1)", d: 2, unit: ": 1" },
-    { k: "D", label: "Drum / sprocket diameter", len: true },
-    { k: "f", label: "Target speed", d: 0, unit: "FPM" }
+    { k: "rpm", label: "Motor Nameplate RPM", d: 0, unit: "RPM" },
+    { k: "hz0", label: "Motor Base Frequency", d: 0, unit: "Hz" },
+    { k: "ratio", label: "Gear Ratio (Input : 1)", d: 2, unit: ": 1" },
+    { k: "D", label: "Drum / Sprocket Diameter", len: true },
+    { k: "f", label: "Target Speed", d: 0, unit: "FPM" }
   ],
   c8: [
-    { k: "ppr", label: "Encoder pulses per rev", d: 0, unit: "PPR" },
-    { k: "D", label: "Measuring wheel / drum diameter", len: true },
-    { k: "dist", label: "Distance to count", len: true },
-    { k: "f", label: "Belt speed", d: 0, unit: "FPM" }
+    { k: "ppr", label: "Encoder Pulses per Rev", d: 0, unit: "PPR" },
+    { k: "D", label: "Measuring Wheel / Drum Diameter", len: true },
+    { k: "dist", label: "Distance to Count", len: true },
+    { k: "f", label: "Belt Speed", d: 0, unit: "FPM" }
   ],
   c4q: [
     { k: "q1", label: "q1", unit: "", neg: true, raw: true },
@@ -681,6 +695,8 @@ function sigRange() {
   return [a[SIG[a.t][0]], a[SIG[a.t][1]]];
 }
 
+var UNIT_TABS = ["c1", "c2", "c3", "c6", "c8"]; // pages with an inch / mm switch
+var SPEED_TABS = ["c1", "c2", "c6", "c8"]; // pages with a belt speed (FPM) box
 function kOf(c) { return S[c].u === "mm" ? 1 / MM : 1; } // inches per unit
 function shown(c, f) {
   var v = S[c][f.k];
@@ -802,6 +818,8 @@ function fieldEl(c, f) {
       mark(false);
       // Conveyor tabs round entries to the shown decimals first (like the TI)
       S[c][f.k] = f.raw ? v : f.len ? rnd(v, 2) * kOf(c) : rnd(v, f.d);
+      // belt speed carries over between the pages that use it
+      if (f.k === "f" && SPEED_TABS.indexOf(c) >= 0) SPEED_TABS.forEach(function (k) { S[k].f = S[c].f; });
       save();
       scheduleHist();
       var pb = document.getElementById("qpaste");
@@ -1017,10 +1035,10 @@ function subnetResult(n, ip) {
     var net = (ip.u & maskBits(n)) >>> 0, bc = (net | ~maskBits(n)) >>> 0;
     // /31 links use both addresses; /32 is a single host
     var first = n >= 31 ? net : net + 1, last = n >= 31 ? bc : bc - 1;
-    h += row("Network", ipText(net)) + row("First host", ipText(first)) + row("Last host", ipText(last)) +
+    h += row("Network", ipText(net)) + row("First Host", ipText(first)) + row("Last Host", ipText(last)) +
       (n < 31 ? row("Broadcast", ipText(bc)) : "");
   }
-  return h + row("Usable hosts", hosts.toLocaleString()) +
+  return h + row("Usable Hosts", hosts.toLocaleString()) +
     row("Wildcard", prefixToMask(n).split(".").map(function (x) { return 255 - x; }).join(".")) + "</div>";
 }
 // A plain text box (standard keyboard) with a label
@@ -1047,8 +1065,8 @@ function textBox(label, value, ph) {
 function renderSubnet() {
   var card = document.createElement("div");
   card.className = "card";
-  var ipBox = textBox("IP address (optional)", S.c11.ip, "192.168.1.50");
-  var mBox = textBox("Subnet mask or /prefix", S.c11.mask);
+  var ipBox = textBox("IP Address (Optional)", S.c11.ip, "192.168.1.50");
+  var mBox = textBox("Subnet Mask or /Prefix", S.c11.mask);
   ipBox.inp.inputMode = "decimal"; // number pad with a "." key
   card.appendChild(ipBox.lab);
   card.appendChild(mBox.lab);
@@ -1074,7 +1092,7 @@ function renderSubnet() {
   // Common masks; tap one to fill the box
   var ref = document.createElement("div");
   ref.className = "card";
-  var t = '<p class="seg-label">Common masks</p><div class="rows masks">';
+  var t = '<p class="seg-label">Common Masks</p><div class="rows masks">';
   for (var n = 8; n <= 30; n++) {
     t += '<div class="row tap" data-m="' + prefixToMask(n) + '"><span class="k">/' + n + '</span><span class="v">' +
       prefixToMask(n) + "</span></div>";
@@ -1527,7 +1545,7 @@ function render() {
     }));
   }
   if (S.tab === 3) {
-    card.appendChild(seg("Solve for", [["gap", "Gap"], ["spd", "Speed Change"]], S.c3.m, function (v) {
+    card.appendChild(seg("Solve For", [["gap", "Gap"], ["spd", "Speed Change"]], S.c3.m, function (v) {
       S.c3.m = v; save(); render();
     }));
   }
@@ -1537,7 +1555,7 @@ function render() {
     }));
   }
   if (S.tab === 8) {
-    card.appendChild(seg("Count mode", [[1, "×1"], [2, "×2"], [4, "×4 (quad)"]], S.c8.x, function (v) {
+    card.appendChild(seg("Count Mode", [[1, "×1"], [2, "×2"], [4, "×4 (Quad)"]], S.c8.x, function (v) {
       S.c8.x = v; save(); render(); scheduleHist();
     }));
   }
@@ -1557,8 +1575,9 @@ function render() {
       S.c4.m = v; save(); render();
     }));
   } else {
-    card.appendChild(seg("Length units", [["in", "inches"], ["mm", "mm"]], S[c].u, function (v) {
-      S[c].u = v; save(); render();
+    card.appendChild(seg("Length Units", [["in", "Inches"], ["mm", "mm"]], S[c].u, function (v) {
+      UNIT_TABS.forEach(function (k) { S[k].u = v; }); // every page follows
+      save(); render();
     }));
   }
   if (S.tab === 4 && S.c4.m === "q2e") card.appendChild(pasteEl());
@@ -1579,7 +1598,7 @@ function render() {
     card.appendChild(fieldEl(c, f));
     // In speed change mode, the A/B choice goes before the speed field
     if (S.tab === 3 && S.c3.m === "spd" && i === 2) {
-      card.appendChild(seg("Adjust speed of", [["A", "A"], ["B", "B"]], S.c3.adj, function (v) {
+      card.appendChild(seg("Adjust Speed of", [["A", "A"], ["B", "B"]], S.c3.adj, function (v) {
         S.c3.adj = v; save(); render();
       }));
     }
@@ -1603,7 +1622,7 @@ function render() {
   var about = document.createElement("details");
   about.className = "card about";
   about.open = true;
-  about.innerHTML = "<summary>How it works</summary>" + describe();
+  about.innerHTML = "<summary>How It Works</summary>" + describe();
   app.appendChild(about);
 }
 
@@ -1784,8 +1803,8 @@ function renderResults() {
   } else if (S.tab === 2) {
     if (S.c2.f === 0) return stop();
     var t = ms(S.c2.L, S.c2.f), tg = ms(S.c2.g, S.c2.f);
-    h += big("Sensor block time", fmt(t, 1), "ms");
-    h += '<div class="rows">' + row("Gap time", fmt(tg, 1) + " ms") + "</div>";
+    h += big("Sensor Block Time", fmt(t, 1), "ms");
+    h += '<div class="rows">' + row("Gap Time", fmt(tg, 1) + " ms") + "</div>";
     sum = ["Block", fmt(t, 1) + " ms"];
   } else if (S.tab === 3) {
     var s = S.c3;
@@ -1804,7 +1823,7 @@ function renderResults() {
       var F = (s.L + s.gw) / (s.L + s.gA);
       var v = s.adj === "B" ? s.a * F : s.b / F;
       var g3 = dual("c3", s.gw - s.gA);
-      h += big("Set speed " + s.adj + " to", fmt(v, 0), "FPM");
+      h += big("Set Speed " + s.adj + " to", fmt(v, 0), "FPM");
       h += '<div class="rows">' + row("Added", g3[0], g3[1], g3[0]) +
         row("Factor (B/A)", fmt(F, 4)) + "</div>";
       sum = ["Set " + s.adj + " to", fmt(v, 0) + " FPM"];
@@ -1815,17 +1834,17 @@ function renderResults() {
     var perHz = d6.rpm / d6.hz0 / d6.ratio * Math.PI * d6.D / 12; // FPM per Hz
     if (d6.m === "fpm") {
       var mr = d6.rpm * d6.hz / d6.hz0, fp = rnd(mr / d6.ratio * Math.PI * d6.D / 12, 0);
-      h += big("Belt speed", fmt(fp, 0), "FPM", fmt(fp * 0.3048, 1) + " m/min");
-      h += '<div class="rows">' + row("Motor speed", fmt(mr, 0) + " RPM") +
-        row("Gearbox output", fmt(mr / d6.ratio, 1) + " RPM") +
+      h += big("Belt Speed", fmt(fp, 0), "FPM", fmt(fp * 0.3048, 1) + " m/min");
+      h += '<div class="rows">' + row("Motor Speed", fmt(mr, 0) + " RPM") +
+        row("Gearbox Output", fmt(mr / d6.ratio, 1) + " RPM") +
         row("FPM per Hz", fmt(perHz, 2)) + "</div>";
       sum = ["Belt", fmt(fp, 0) + " FPM"];
     } else {
       if (perHz === 0) return stop();
       var hz = d6.f / perHz, mr2 = d6.rpm * hz / d6.hz0;
-      h += big("Set drive to", fmt(hz, 1), "Hz");
-      h += '<div class="rows">' + row("Motor speed", fmt(mr2, 0) + " RPM") +
-        row("Gearbox output", fmt(mr2 / d6.ratio, 1) + " RPM") +
+      h += big("Set Drive to", fmt(hz, 1), "Hz");
+      h += '<div class="rows">' + row("Motor Speed", fmt(mr2, 0) + " RPM") +
+        row("Gearbox Output", fmt(mr2 / d6.ratio, 1) + " RPM") +
         row("FPM per Hz", fmt(perHz, 2)) + "</div>";
       if (hz > d6.hz0) h += '<div class="warnrow">Above the motor\'s ' + fmt(d6.hz0, 0) + ' Hz base frequency</div>';
       sum = ["Drive", fmt(hz, 1) + " Hz"];
@@ -1851,7 +1870,7 @@ function renderResults() {
       sum = ["Signal", plain(sig, sd) + " " + su];
     }
     var pct = (sig - rg[0]) / (rg[1] - rg[0]) * 100;
-    h += '<div class="rows">' + row("Percent of span", plain(pct, 1) + " %") + "</div>";
+    h += '<div class="rows">' + row("Percent of Span", plain(pct, 1) + " %") + "</div>";
     var lo = Math.min(rg[0], rg[1]), hi = Math.max(rg[0], rg[1]);
     if (sig < lo || sig > hi)
       h += '<div class="warnrow">Outside the ' + plain(rg[0], sd) + "–" + plain(rg[1], sd) + " " + su + " range" +
@@ -1869,10 +1888,10 @@ function renderResults() {
       : [plain(resIn, 5) + " in", "[" + plain(resIn * MM, 4) + " mm]"];
     var fA = e8.f * 12 / 60 / circ * e8.ppr; // A-channel pulses per second
     h += '<div class="rows">' + row("Counts", per[0], per[1], per[0]) +
-      row("Counts per foot", fmt(cpi * 12, 1)) +
-      row("Counts per rev", fmt(cpr, 0)) +
+      row("Counts per Foot", fmt(cpi * 12, 1)) +
+      row("Counts per Rev", fmt(cpr, 0)) +
       row("Resolution", resTxt[0], resTxt[1], resTxt[0]) +
-      row("Input frequency at " + fmt(e8.f, 0) + " FPM", fA >= 1000 ? fmt(fA / 1000, 2) + " kHz" : fmt(fA, 0) + " Hz") + "</div>";
+      row("Input Frequency at " + fmt(e8.f, 0) + " FPM", fA >= 1000 ? fmt(fA / 1000, 2) + " kHz" : fmt(fA, 0) + " Hz") + "</div>";
     sum = ["Counts", fmt(cnt, 1)];
   } else {
     var c4 = S.c4;
@@ -1895,7 +1914,7 @@ function renderResults() {
       }
       var qn = raw.map(function (x) { return x / len; });
       var e = quatToEuler(qn).map(function (x) { return plain(x, 6); });
-      h += '<div class="big-label">Euler angles</div><div class="grid g3">' +
+      h += '<div class="big-label">Euler Angles</div><div class="grid g3">' +
         ["X", "Y", "Z"].map(function (a, i) {
           return '<div class="cell tap" data-copy="' + e[i] + '"><b>' + a + "</b><span>" + e[i] + "&deg;</span></div>";
         }).join("") + "</div>";
@@ -1980,7 +1999,7 @@ function placeBar() {
   requestAnimationFrame(function () {
     barQueued = false;
     // Only shown while the keypad is open, sitting just above it
-    var show = typing && !!resultsBox;
+    var show = typing && !!resultsBox && bar.textContent !== ""; // pages without a bar answer leave it empty
     bar.classList.toggle("show", show);
     if (!show) return;
     var vv = window.visualViewport;
@@ -1998,6 +2017,7 @@ window.addEventListener("scroll", placeBar);
 window.addEventListener("resize", placeBar);
 
 function setBar(sum) {
+  if (groupOf(S.tab) !== "conv") sum = ["", ""]; // other pages show their answer at the top of the results
   bar.classList.toggle("long", S.tab === 4);
   bar.innerHTML = "<small>" + sum[0] + "</small><span>" + sum[1] + "</span>";
   placeBar();
