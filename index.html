@@ -468,6 +468,7 @@ html.nozoom #app { touch-action: pan-y; }
 }
 .sym svg { width: 100%; max-width: 150px; height: auto; color: var(--text); display: block; margin: 0 auto; }
 .sym.wide { grid-column: span 2; }
+.card:has(> .swipebox) { overflow: hidden; } /* sliding content stays inside its card */
 /* Symbols cut from a reference chart: the picture is a mask, filled with the text color */
 .symimg {
   width: 100%;
@@ -1009,6 +1010,7 @@ function renderWires() {
   });
   t += "</div>";
   var box = document.createElement("div");
+  box.className = "swipebox"; // slides on its own when swiping between choices
   box.innerHTML = t;
   card.appendChild(box);
   app.appendChild(card);
@@ -1194,6 +1196,7 @@ function renderTap() {
     else t += "<span>" + r[0] + "</span><span>" + r[1] + "</span><span>" + r[2].toFixed(4).slice(1) + "</span>";
   });
   var box = document.createElement("div");
+  box.className = "swipebox"; // slides on its own when swiping between choices
   box.innerHTML = t + "</div>";
   card.appendChild(box);
   app.appendChild(card);
@@ -1472,6 +1475,7 @@ function renderSymbols() {
     S.c9.k = v; save(); render();
   }));
   var box = document.createElement("div");
+  box.className = "swipebox"; // slides on its own when swiping between choices
   if (S.c9.k === "valves") {
     // Valves are shown in sections: directional, actuators, pressure, flow
     box.innerHTML = VALVE_SECTIONS.map(function (sec) {
@@ -2065,8 +2069,10 @@ function pageAt(step) {
   return t === null ? null : function () { openTab(t); };
 }
 function slide(x, ms) {
-  app.style.transition = ms ? "transform " + ms + "ms ease-out" : "none";
-  app.style.transform = x ? "translateX(" + x + "px)" : "";
+  // swiping between choices moves just the content under the selector; otherwise the whole page
+  var el = (SWIPE_SUBS[S.tab] && app.querySelector(".swipebox")) || app;
+  el.style.transition = ms ? "transform " + ms + "ms ease-out" : "none";
+  el.style.transform = x ? "translateX(" + x + "px)" : "";
 }
 app.addEventListener("touchstart", function (e) {
   var t = e.target;
