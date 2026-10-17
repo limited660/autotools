@@ -298,6 +298,8 @@ label.field > span { display: block; font-size: 16px; font-weight: 600; color: v
 .wire .winfo b { display: block; font-size: 18px; }
 .wire .winfo b small { font-size: 14px; color: var(--muted); font-weight: 600; }
 .wire .winfo span { font-size: 15px; color: var(--muted); }
+.wire .only5 { font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  background: var(--accent); color: var(--accent-text); border-radius: 6px; padding: 1px 6px; margin-left: 4px; vertical-align: 2px; }
 .inwrap input.paste { font-size: 18px; padding-left: 12px; padding-right: 12px; }
 .pm {
   position: absolute;
@@ -545,6 +547,10 @@ html.nozoom #app { touch-action: pan-y; }
   border-bottom: 1px solid var(--line); text-align: left; }
 .pf > div:last-child { border-bottom: 0; }
 .pf b { color: var(--accent-ink); font-size: 16px; grid-row: span 2; }
+.tl > div { padding: 9px 0; border-bottom: 1px solid var(--line); text-align: left; }
+.tl > div:last-child { border-bottom: 0; }
+.tl b { display: block; font-size: 16px; }
+.tl span { display: block; color: var(--muted); font-size: 14px; line-height: 1.35; margin-top: 2px; }
 .pf span { font-weight: 600; font-size: 16px; }
 .pf small { color: var(--muted); font-size: 14px; line-height: 1.3; }
 .wiring { width: 100%; height: auto; display: block; margin: 4px 0 6px; color: var(--text); fill: none;
@@ -749,7 +755,7 @@ var DEF = {
   c2: { u: "in", L: 12, g: 0, f: 100 },
   c3: { u: "in", m: "gap", L: 12, gA: 0, a: 50, b: 100, gw: 12, adj: "B" },
   c4: { m: "e2q", x: 0, y: 0, z: 0, q1: 1, q2: 0, q3: 0, q4: 0 },
-  c5: { pins: 4 },
+  c5: { pins: "cables" },
   c6: { u: "in", m: "fpm", rpm: 1750, hz0: 60, ratio: 20, D: 4, hz: 60, f: 100 },
   c7: { t: "ma", m: "s2v", sl: 0, sh: 27648, ml: 4, mh: 20, vl: 0, vh: 10, el: 0, eh: 100, sig: 12, val: 50 },
   c8: { u: "in", x: 4, ppr: 1024, D: 4, dist: 12, f: 100 },
@@ -1196,33 +1202,40 @@ function colorCodes() {
 function renderWires() {
   var card = document.createElement("div");
   card.className = "card";
-  var k = S.c5.pins; // 4 or 5 (cable pinouts), "pnp", "nonc" or "codes" (wire color abbreviations)
-  if ([4, 5, "pnp", "nonc", "codes"].indexOf(k) < 0) k = S.c5.pins = 4;
-  card.appendChild(seg("Sensors", [[4, "4-Pin"], [5, "5-Pin"], ["pnp", "PNP/NPN"], ["nonc", "NO/NC"], ["codes", "Colors"]], k, function (v) {
+  var k = S.c5.pins; // "cables" (pinouts), "pnp", "sensors" (photo-eye types, NO / NC) or "codes" (wire colors)
+  if (k === 4 || k === 5) k = "cables"; // older saved choices
+  if (k === "nonc") k = "sensors";
+  if (["cables", "pnp", "sensors", "codes"].indexOf(k) < 0) k = "cables";
+  S.c5.pins = k;
+  card.appendChild(seg("Wiring", [["cables", "Cables"], ["pnp", "PNP/NPN"], ["sensors", "Sensors"], ["codes", "Colors"]], k, function (v) {
     S.c5.pins = v; save(); render();
   }));
   var t;
   if (k === "pnp") {
     t = '<h2 class="sechead">PNP (Sourcing) Sensor</h2>' +
-      '<p class="secnote">Wire to a sinking input card: the card common goes to 0 V.</p>' + sensorDiagram(true) +
+      '<p class="secnote">Wire to a sinking input card.<br>The card common goes to 0 V.</p>' + sensorDiagram(true) +
       '<div class="secgap"></div><h2 class="sechead">NPN (Sinking) Sensor</h2>' +
-      '<p class="secnote">Wire to a sourcing input card: the card common goes to +24 V.</p>' + sensorDiagram(false) +
+      '<p class="secnote">Wire to a sourcing input card.<br>The card common goes to +24 V.</p>' + sensorDiagram(false) +
       '<div class="keys"><div class="keyrow"><b>Sensor Cable</b><div class="wirekey">' +
       '<span style="--c:#8b5a2b">Brown +V</span><span style="--c:#111111">Black Out</span>' +
       '<span style="--c:#2563eb">Blue 0 V</span></div></div>' +
       '<div class="keyrow"><b>Panel Power</b><div class="wirekey"><span style="--c:#2563eb">Blue +24 V</span>' +
       '<span style="--c:repeating-linear-gradient(90deg,#2563eb 0 4px,#f8fafc 4px 8px)">Blue/White 0 V</span></div></div></div>';
-  } else if (k === "nonc") {
-    t = pfList(SENSOR_TEXT.nonc);
+  } else if (k === "sensors") {
+    t = '<h2 class="sechead">Photo-Eye Types</h2>' + textList(SENSOR_TEXT.eyes) +
+      '<div class="secgap"></div><h2 class="sechead">Proximity Sensors</h2>' + textList(SENSOR_TEXT.prox) +
+      '<div class="secgap"></div><h2 class="sechead">Outputs</h2>' + textList(SENSOR_TEXT.nonc);
   } else if (k === "codes") {
     t = colorCodes();
   } else {
-    t = '<div class="wires">';
-    WIRES.slice(0, k).forEach(function (w) {
+    // one list for M8 / M12 cables: 4-pin cables stop at pin 4
+    t = '<h2 class="sechead">M8 / M12 Sensor Cables</h2><div class="wires">';
+    WIRES.forEach(function (w) {
       t += '<div class="wire">' +
         '<div class="pin">' + w.pin + "</div>" +
         '<div class="swatch" style="background:' + w.hex + '"></div>' +
-        '<div class="winfo"><b>' + w.color + " <small>" + w.code + "</small></b><span>" + w.use + "</span></div></div>";
+        '<div class="winfo"><b>' + w.color + " <small>" + w.code + "</small>" + (w.pin === 5 ? ' <em class="only5">5-pin only</em>' : "") +
+        "</b><span>" + w.use + "</span></div></div>";
     });
     t += "</div>";
   }
@@ -1237,7 +1250,7 @@ function renderWires() {
   about.innerHTML = "<summary>Notes</summary>" + (k === "codes" ?
     "<p>Abbreviations as used on drawings and cable labels. European sensor cables often print the IEC 60757 " +
     "code instead, shown after the name where it's different. A striped wire is named main color first, then the stripe.</p>" :
-    typeof k === "number" ?
+    k === "cables" ?
     "<p>Standard colors for M8 and M12 sensor cables (IEC 60947-5-2). " +
     "3-wire sensors use pins 1, 3 and 4 only: brown +V, blue 0 V, black output.</p>" +
     "<p>On a PNP sensor the output switches to +V; on an NPN sensor it switches to 0 V.</p>" +
@@ -1537,6 +1550,10 @@ var PF_FAULTS = [
   ["F100", "Parameter Checksum", "Saved parameters are corrupt: reset and reload"],
   ["F111", "Safety Hardware", "Safety circuit hardware fault"]
 ];
+// A plain list: bold name, explanation under it
+function textList(rows) {
+  return '<div class="tl">' + rows.map(function (r) { return "<div><b>" + r[0] + "</b><span>" + r[1] + "</span></div>"; }).join("") + "</div>";
+}
 function pfList(rows) {
   return '<div class="pf">' + rows.map(function (r) {
     return "<div><b>" + r[0] + "</b><span>" + r[1] + "</span><small>" + r[2] + "</small></div>";
@@ -1595,13 +1612,31 @@ function sensorDiagram(pnp) {
     term(120, 64, "BN +", 1) + term(120, 86, "BK out", 1) + term(120, 112, "BU 0V", 1) +
     term(210, 86, "IN") + term(210, com, "COM") + "</svg>";
 }
+// [name, what it is]
 var SENSOR_TEXT = {
+  eyes: [
+    ["Through-Beam", "Separate emitter and receiver facing each other; the part breaks the beam. Longest range and the most reliable."],
+    ["Retroreflective", "Emitter and receiver in one housing, bouncing light off a reflector. Easy to align; shiny parts can fool it."],
+    ["Polarized Retroreflective", "A retroreflective eye with a polarizing filter, so shiny or shrink-wrapped products don't fool it."],
+    ["Diffuse", "No reflector: it sees light bouncing back off the part itself (sometimes called proximity mode). Short range, and dark parts are harder to see."],
+    ["Background Suppression (BGS)", "A diffuse eye that ignores anything past a set distance, so the conveyor frame or wall behind doesn't trigger it."],
+    ["Fiber Optic", "Light carried through flexible fibers to a tiny head. For small parts, tight spaces or heat."],
+    ["Laser", "Small, bright spot for tiny parts, precise edges or long ranges."]
+  ],
+  prox: [
+    ["Inductive", "Senses metal only, without touching it. Short range (a few mm); steel is seen farther away than aluminum or brass."],
+    ["Capacitive", "Senses almost anything: plastic, wood, powder, liquid, even through a plastic tank wall. Sensitivity is adjustable; buildup and moisture can fool it."],
+    ["Ultrasonic", "Times a sound echo. Sees clear, shiny or dark parts and liquid levels; foam and soft materials absorb the sound."],
+    ["Magnetic (Reed / Hall)", "Senses a magnet, most often clipped to an air cylinder to see the piston position."],
+    ["Flush vs Non-Flush", "Flush (shielded) sensors can sit flush in metal but have shorter range. Non-flush (unshielded) see farther but need clear space around the face."]
+  ],
   nonc: [
-    ["NO", "Normally Open", "Output turns on when the sensor sees its target. On a photo-eye this is often called light-on or dark-on, depending on the mode."],
-    ["NC", "Normally Closed", "Output is on with nothing there and turns off when the target shows up."],
-    ["Tip", "Fail-safe wiring", "Use NC (on when healthy) for anything that must stop the machine, so a cut wire or dead sensor reads as tripped."],
-    ["PNP", "Sourcing", "Output switches +24 V to the load. Most common in North America and Europe."],
-    ["NPN", "Sinking", "Output switches the load to 0 V. Common on older and Asian equipment."]
+    ["Light-On / Dark-On", "Light-on: output on when the receiver sees light. Dark-on: output on when the light is blocked. Usually a switch or wire on the eye."],
+    ["Normally Open (NO)", "Output turns on when the sensor sees its target."],
+    ["Normally Closed (NC)", "Output is on with nothing there and turns off when the target shows up."],
+    ["Fail-Safe Wiring", "Use NC (on when healthy) for anything that must stop the machine, so a cut wire or dead sensor reads as tripped."],
+    ["PNP (Sourcing)", "Output switches +24 V to the load. Most common in North America and Europe."],
+    ["NPN (Sinking)", "Output switches the load to 0 V. Common on older and Asian equipment."]
   ]
 };
 
@@ -2507,7 +2542,7 @@ var swipe = null;
 // On Wires, Symbols and Tap Drill a swipe on the selector or the content under it steps through
 // the page's own choices (cable, symbol type, thread); a swipe anywhere else changes page
 var SWIPE_SUBS = {
-  5: ["c5", "pins", [4, 5, "pnp", "nonc", "codes"]],
+  5: ["c5", "pins", ["cables", "pnp", "sensors", "codes"]],
   9: ["c9", "k", ["elec", "pneu", "hyd", "valves"]],
   14: ["c14", "k", ["unc", "unf", "m", "chart"]],
   15: ["c15", "k", ["par", "flt"]]

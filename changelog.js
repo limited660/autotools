@@ -1,6 +1,11 @@
 // What's New. Add a new entry at the top with every version (same number as version.js).
 // Keep each line short and in plain words: what changed for the person using the app.
 var CHANGELOG = [
+  { v: "v69", d: "10/17/2026", n: [
+    "Wiring: 4-pin and 5-pin combined into one Cables list (pin 5 marked 5-Pin Only)",
+    "Wiring: NO/NC is now Sensors, with photo-eye types, proximity sensors and outputs explained",
+    "PNP/NPN descriptions break onto two clean lines"
+  ] },
   { v: "v68", d: "10/17/2026", n: [
     "New look: graphite and safety-yellow colors, big page titles, list-style fields and a floating bottom bar",
     "Wires is now Wiring, with a new Colors choice listing wire color abbreviations (solid and striped)",
