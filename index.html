@@ -2104,6 +2104,8 @@ document.addEventListener("touchstart", function (e) {
   var t = e.target;
   // not on the header or bars, while typing, on a zoomed-in Symbols page, or with two fingers.
   // The tab strip swipes between pages; the bottom menu swipes between groups
+  var ae = document.activeElement, keyboard = typing || (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName));
+  if (keyboard) { swipe = null; return; } // no swiping while the keyboard is open
   if (e.touches.length !== 1 || t.closest("input, select, textarea, header, #upd, #bar") ||
       (window.visualViewport && window.visualViewport.scale > 1.01)) { swipe = null; return; }
   swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), dx: 0, side: false,
