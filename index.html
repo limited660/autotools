@@ -2068,9 +2068,10 @@ function pageAt(step) {
   var t = list[i + step] ? list[i + step][0] : null;
   return t === null ? null : function () { openTab(t); };
 }
-function slide(x, ms) {
-  // swiping between choices moves just the content under the selector; otherwise the whole page
-  var el = (SWIPE_SUBS[S.tab] && app.querySelector(".swipebox")) || app;
+function slide(x, ms, sub) {
+  // swiping between choices moves just the content under the selector; otherwise the whole page.
+  // "sub" is fixed when the swipe starts, so a page change always finishes on the page itself
+  var el = (sub && app.querySelector(".swipebox")) || app;
   el.style.transition = ms ? "transform " + ms + "ms ease-out" : "none";
   el.style.transform = x ? "translateX(" + x + "px)" : "";
 }
@@ -2079,7 +2080,7 @@ app.addEventListener("touchstart", function (e) {
   // not while typing, on a zoomed-in Symbols page, or with two fingers
   if (e.touches.length !== 1 || t.closest("input, select, textarea") ||
       (window.visualViewport && window.visualViewport.scale > 1.01)) { swipe = null; return; }
-  swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), dx: 0, side: false };
+  swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), dx: 0, side: false, sub: !!SWIPE_SUBS[S.tab] };
 }, { passive: true });
 app.addEventListener("touchmove", function (e) {
   if (!swipe) return;
@@ -2095,7 +2096,7 @@ app.addEventListener("touchmove", function (e) {
   e.preventDefault(); // don't scroll up and down while dragging sideways
   // no page that way: drag with resistance
   swipe.dx = pageAt(dx < 0 ? 1 : -1) ? dx : dx / 3;
-  slide(swipe.dx, 0);
+  slide(swipe.dx, 0, swipe.sub);
 }, { passive: false });
 function endSwipe() {
   if (!swipe) return;
@@ -2104,14 +2105,14 @@ function endSwipe() {
   if (!sw.side) return;
   var w = window.innerWidth, dx = sw.dx, fast = Math.abs(dx) / (Date.now() - sw.t) > 0.5;
   var next = pageAt(dx < 0 ? 1 : -1);
-  if (!next || (Math.abs(dx) < w / 4 && !fast)) { slide(0, 180); return; } // snap back
+  if (!next || (Math.abs(dx) < w / 4 && !fast)) { slide(0, 180, sw.sub); return; } // snap back
   var dir = dx < 0 ? -1 : 1;
-  slide(dir * w, 160); // finish sliding out...
+  slide(dir * w, 160, sw.sub); // finish sliding out...
   setTimeout(function () {
     next();
-    slide(-dir * w, 0); // ...and slide the new page in from the other side
+    slide(-dir * w, 0, sw.sub); // ...and slide the new page in from the other side
     app.getBoundingClientRect();
-    slide(0, 200);
+    slide(0, 200, sw.sub);
   }, 160);
 }
 app.addEventListener("touchend", endSwipe);
