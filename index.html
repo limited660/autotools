@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Automation Tools</title>
-<meta name="description" content="Conveyor speed, sensor block time, transfer gap, robot orientation and sensor wire colors.">
+<meta name="description" content="Conveyor speed, sensor timing, transfer gap, drive speed, analog scaling, encoder counts, robot orientation and sensor wire colors.">
 <meta name="theme-color" content="#1e293b">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
@@ -383,6 +383,49 @@ body.typing nav { display: none; }
 body.typing main { padding-bottom: 60vh; }
 nav button[aria-selected="true"] { opacity: 1; color: var(--accent); border-top-color: var(--accent); }
 
+/* ---- Page tabs for the open group (under the header) ---- */
+#pages {
+  display: flex;
+  gap: 6px;
+  padding: 0 16px 12px;
+  background: var(--head);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+#pages::-webkit-scrollbar { display: none; }
+#pages:empty { display: none; }
+#pages button {
+  flex: 1 0 auto;
+  border: 1px solid rgba(255,255,255,.2);
+  background: transparent;
+  color: var(--head-text);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#pages button[aria-selected="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
+/* ---- History ---- */
+.hist .hrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+}
+.hist .hrow:first-of-type { border-top: 0; }
+.hist .hres { font-weight: 700; font-size: 17px; }
+.hist .hin { font-size: 14px; color: var(--muted); margin-top: 2px; }
+.hist .htime { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.hist .hempty { color: var(--muted); font-size: 15px; text-align: center; margin: 0; }
+.hist .hclear { display: block; margin: 8px auto 0; }
+.warnrow { color: var(--error); font-weight: 600; font-size: 15px; margin-top: 10px; text-align: center; }
+
 /* ---- Small "Copied" message ---- */
 #toast {
   position: fixed;
@@ -408,25 +451,20 @@ nav button[aria-selected="true"] { opacity: 1; color: var(--accent); border-top-
   <h1>Automation Tools</h1>
   <button id="theme" type="button"></button>
 </header>
+<div id="pages" role="tablist"></div>
 <div id="bar"></div>
 <main id="app"></main>
 <footer id="ver"></footer>
 <nav role="tablist">
-  <button role="tab" data-tab="1">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14l4-4"/><path d="M3.3 16a9 9 0 1 1 17.4 0"/></svg>
-    Speed</button>
-  <button role="tab" data-tab="2">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M10 2h4"/></svg>
-    Sensor</button>
-  <button role="tab" data-tab="3">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="6" height="8" rx="1"/><rect x="16" y="8" width="6" height="8" rx="1"/><path d="M10 12h4"/><path d="M12 10l2 2-2 2"/></svg>
-    Gap</button>
-  <button role="tab" data-tab="4">
+  <button role="tab" data-group="conv">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="13" width="20" height="5" rx="2.5"/><circle cx="5.5" cy="15.5" r="1"/><circle cx="18.5" cy="15.5" r="1"/><rect x="8" y="6" width="8" height="7" rx="1"/></svg>
+    Conveyor</button>
+  <button role="tab" data-group="ctrl">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h2M7 13h2M7 17h2"/><path d="M13 8l4 0M13 12h4M13 16h4"/></svg>
+    Controls</button>
+  <button role="tab" data-group="robot">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h8"/><path d="M8 20v-5"/><circle cx="8" cy="13" r="2"/><path d="M9.5 11.5l5-5"/><circle cx="16" cy="5" r="2"/><path d="M17.5 6.5l2.5 2.5"/></svg>
     Robot</button>
-  <button role="tab" data-tab="5">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="6"/><circle cx="7" cy="10" r=".8" fill="currentColor"/><circle cx="11" cy="10" r=".8" fill="currentColor"/><circle cx="7" cy="14" r=".8" fill="currentColor"/><circle cx="11" cy="14" r=".8" fill="currentColor"/><path d="M15 12h7"/></svg>
-    Wires</button>
 </nav>
 <div id="toast"></div>
 <script src="version.js"></script>
@@ -462,7 +500,12 @@ var DEF = {
   c2: { u: "in", L: 12, g: 0, f: 100 },
   c3: { u: "in", m: "gap", L: 12, gA: 0, a: 50, b: 100, gw: 12, adj: "B" },
   c4: { m: "e2q", x: 0, y: 0, z: 0, q1: 1, q2: 0, q3: 0, q4: 0 },
-  c5: { pins: 4 }
+  c5: { pins: 4 },
+  c6: { u: "in", m: "fpm", rpm: 1750, hz0: 60, ratio: 20, D: 4, hz: 60, f: 100 },
+  c7: { t: "ma", m: "s2v", sl: 0, sh: 27648, el: 0, eh: 100, sig: 12, val: 50 },
+  c8: { u: "in", x: 4, ppr: 1024, D: 4, dist: 12, f: 100 },
+  hist: {},
+  last: { conv: 1, ctrl: 7, robot: 4 } // last page opened in each group
 };
 var KEY = "autotools-v1";
 var S = JSON.parse(JSON.stringify(DEF));
@@ -470,11 +513,13 @@ try {
   // Older versions saved under "convcalc-v1"; carry those values over
   var saved = JSON.parse(localStorage.getItem(KEY) || localStorage.getItem("convcalc-v1") || "null");
   if (saved) {
-    ["c1", "c2", "c3", "c4", "c5"].forEach(function (c) {
+    ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"].forEach(function (c) {
       if (saved[c]) for (var k in S[c]) if (k in saved[c]) S[c][k] = saved[c][k];
     });
     if (saved.tab) S.tab = saved.tab;
     if (saved.theme) S.theme = saved.theme;
+    if (saved.hist) S.hist = saved.hist;
+    if (saved.last) for (var g in S.last) if (saved.last[g]) S.last[g] = saved.last[g];
   }
 } catch (e) {}
 function save() {
@@ -523,6 +568,26 @@ var FIELDS = {
     { k: "y", label: "Y angle", unit: "°", neg: true, raw: true },
     { k: "z", label: "Z angle", unit: "°", neg: true, raw: true }
   ],
+  c6fpm: [
+    { k: "rpm", label: "Motor nameplate RPM", d: 0, unit: "RPM" },
+    { k: "hz0", label: "Motor base frequency", d: 0, unit: "Hz" },
+    { k: "ratio", label: "Gear ratio (input : 1)", d: 2, unit: ": 1" },
+    { k: "D", label: "Drum / sprocket diameter", len: true },
+    { k: "hz", label: "Drive frequency", d: 1, unit: "Hz" }
+  ],
+  c6hz: [
+    { k: "rpm", label: "Motor nameplate RPM", d: 0, unit: "RPM" },
+    { k: "hz0", label: "Motor base frequency", d: 0, unit: "Hz" },
+    { k: "ratio", label: "Gear ratio (input : 1)", d: 2, unit: ": 1" },
+    { k: "D", label: "Drum / sprocket diameter", len: true },
+    { k: "f", label: "Target speed", d: 0, unit: "FPM" }
+  ],
+  c8: [
+    { k: "ppr", label: "Encoder pulses per rev", d: 0, unit: "PPR" },
+    { k: "D", label: "Measuring wheel / drum diameter", len: true },
+    { k: "dist", label: "Distance to count", len: true },
+    { k: "f", label: "Belt speed", d: 0, unit: "FPM" }
+  ],
   c4q: [
     { k: "q1", label: "q1", unit: "", neg: true, raw: true },
     { k: "q2", label: "q2", unit: "", neg: true, raw: true },
@@ -530,6 +595,25 @@ var FIELDS = {
     { k: "q4", label: "q4", unit: "", neg: true, raw: true }
   ]
 };
+
+// Analog scaling fields depend on the signal type
+var SIG = { ma: [4, 20, "mA", 3], v: [0, 10, "V", 3], raw: [null, null, "counts", 0] };
+function analogFields() {
+  var a = S.c7, u = SIG[a.t][2], list = [];
+  if (a.t === "raw") {
+    list.push({ k: "sl", label: "Signal low (counts)", unit: "", neg: true, raw: true });
+    list.push({ k: "sh", label: "Signal high (counts)", unit: "", neg: true, raw: true });
+  }
+  list.push({ k: "el", label: "Value at signal low", unit: "", neg: true, raw: true });
+  list.push({ k: "eh", label: "Value at signal high", unit: "", neg: true, raw: true });
+  if (a.m === "s2v") list.push({ k: "sig", label: "Signal reading", unit: u, neg: a.t === "raw", raw: true });
+  else list.push({ k: "val", label: "Value", unit: "", neg: true, raw: true });
+  return list;
+}
+function sigRange() {
+  var a = S.c7;
+  return a.t === "raw" ? [a.sl, a.sh] : [SIG[a.t][0], SIG[a.t][1]];
+}
 
 function kOf(c) { return S[c].u === "mm" ? 1 / MM : 1; } // inches per unit
 function shown(c, f) {
@@ -649,6 +733,7 @@ function fieldEl(c, f) {
       // Conveyor tabs round entries to the shown decimals first (like the TI)
       S[c][f.k] = f.raw ? v : f.len ? rnd(v, 2) * kOf(c) : rnd(v, f.d);
       save();
+      scheduleHist();
       var pb = document.getElementById("qpaste");
       if (pb && pb !== document.activeElement) pb.value = qText();
     }
@@ -740,6 +825,7 @@ function pasteEl() {
     msg.classList.toggle("show", bad);
     if (bad) { invalid.qpaste = true; renderResults(); return; }
     delete invalid.qpaste;
+    scheduleHist();
     ["q1", "q2", "q3", "q4"].forEach(function (k, i) {
       S.c4[k] = Number(n[i]);
       var box = app.querySelector('input[data-k="' + k + '"]');
@@ -832,12 +918,40 @@ function renderWires() {
   setBar(["", ""]);
 }
 
+// Tools are grouped; the bottom bar picks the group, the strip under the
+// header picks the page within it
+var GROUPS = {
+  conv: [[1, "Speed"], [2, "Sensor"], [3, "Gap"], [6, "Drive"]],
+  ctrl: [[7, "Analog"], [8, "Encoder"], [5, "Wires"]],
+  robot: [[4, "Orientation"]]
+};
+function groupOf(t) {
+  for (var g in GROUPS) if (GROUPS[g].some(function (x) { return x[0] === t; })) return g;
+  return "conv";
+}
+var curList = []; // the input boxes on screen (for history)
 function render() {
   invalid = {};
-  document.querySelectorAll("nav button").forEach(function (b) {
-    b.setAttribute("aria-selected", String(+b.dataset.tab === S.tab));
+  clearTimeout(histT);
+  var grp = groupOf(S.tab);
+  S.last[grp] = S.tab;
+  document.querySelectorAll("nav button[data-group]").forEach(function (b) {
+    b.setAttribute("aria-selected", String(b.dataset.group === grp));
+  });
+  // Page tabs for this group (none when the group has only one page)
+  var pages = document.getElementById("pages");
+  pages.innerHTML = "";
+  if (GROUPS[grp].length > 1) GROUPS[grp].forEach(function (pg) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("role", "tab");
+    b.textContent = pg[1];
+    b.setAttribute("aria-selected", String(pg[0] === S.tab));
+    b.onclick = function () { openTab(pg[0]); };
+    pages.appendChild(b);
   });
   app.innerHTML = "";
+  histBox = null;
   if (S.tab === 5) { renderWires(); return; }
   var c = "c" + S.tab;
   var card = document.createElement("div");
@@ -869,7 +983,28 @@ function render() {
       S.c3.m = v; save(); render();
     }));
   }
-  if (S.tab === 4) {
+  if (S.tab === 6) {
+    card.appendChild(seg("Find", [["fpm", "Speed (FPM)"], ["hz", "Drive Hz"]], S.c6.m, function (v) {
+      S.c6.m = v; save(); render();
+    }));
+  }
+  if (S.tab === 8) {
+    card.appendChild(seg("Count mode", [[1, "×1"], [2, "×2"], [4, "×4 (quad)"]], S.c8.x, function (v) {
+      S.c8.x = v; save(); render(); scheduleHist();
+    }));
+  }
+  if (S.tab === 7) {
+    card.appendChild(seg("Signal", [["ma", "4–20 mA"], ["v", "0–10 V"], ["raw", "PLC counts"]], S.c7.t, function (v) {
+      S.c7.t = v;
+      // A reading that doesn't fit the new signal type starts at mid-range
+      var rg = sigRange(), lo = Math.min(rg[0], rg[1]), hi = Math.max(rg[0], rg[1]);
+      if (S.c7.sig < lo || S.c7.sig > hi) S.c7.sig = (rg[0] + rg[1]) / 2;
+      save(); render();
+    }));
+    card.appendChild(seg("Convert", [["s2v", "Signal → Value"], ["v2s", "Value → Signal"]], S.c7.m, function (v) {
+      S.c7.m = v; save(); render();
+    }));
+  } else if (S.tab === 4) {
     card.appendChild(seg("Convert", [["e2q", "Angles → Quaternion"], ["q2e", "Quaternion → Angles"]], S.c4.m, function (v) {
       S.c4.m = v; save(); render();
     }));
@@ -886,7 +1021,11 @@ function render() {
   else if (S.tab === 3) {
     if (S.c3.m === "gap") list = FIELDS.c3gap;
     else list = S.c3.adj === "A" ? FIELDS.c3spdA : FIELDS.c3spdB;
-  } else list = S.c4.m === "e2q" ? FIELDS.c4e : FIELDS.c4q;
+  } else if (S.tab === 6) list = S.c6.m === "fpm" ? FIELDS.c6fpm : FIELDS.c6hz;
+  else if (S.tab === 7) list = analogFields();
+  else if (S.tab === 8) list = FIELDS.c8;
+  else list = S.c4.m === "e2q" ? FIELDS.c4e : FIELDS.c4q;
+  curList = list;
 
   list.forEach(function (f, i) {
     card.appendChild(fieldEl(c, f));
@@ -907,11 +1046,74 @@ function render() {
   app.appendChild(resultsBox);
   renderResults();
 
+  histBox = document.createElement("details");
+  histBox.className = "card about hist";
+  histBox.open = true;
+  app.appendChild(histBox);
+  renderHist();
+
   var about = document.createElement("details");
   about.className = "card about";
   about.open = true;
   about.innerHTML = "<summary>How it works</summary>" + describe();
   app.appendChild(about);
+}
+
+// ---- History: the last 10 results on each calculator ----
+// A result is saved a moment after you stop changing the entries.
+// Tap a saved result to put its entries back.
+var histBox = null, histT, lastSum = null;
+function histKey() { return "c" + S.tab; }
+function inputsText() {
+  var c = histKey();
+  return curList.map(function (f) {
+    var u = f.len ? S[c].u : f.unit;
+    return f.label + " " + shown(c, f) + (u ? " " + u : "");
+  }).join(" · ");
+}
+function scheduleHist() {
+  clearTimeout(histT);
+  histT = setTimeout(addHist, 2000);
+}
+function addHist() {
+  if (!lastSum || !histBox || Object.keys(invalid).length) return;
+  var c = histKey();
+  var list = S.hist[c] || (S.hist[c] = []);
+  var e = { t: Date.now(), r: (lastSum[0] ? lastSum[0] + ": " : "") + lastSum[1], i: inputsText(),
+    s: JSON.parse(JSON.stringify(S[c])) };
+  if (list.length && list[0].r === e.r && list[0].i === e.i) return;
+  list.unshift(e);
+  if (list.length > 10) list.length = 10;
+  save();
+  renderHist();
+}
+function renderHist() {
+  if (!histBox) return;
+  var c = histKey(), list = S.hist[c] || [];
+  var h = "<summary>History" + (list.length ? " (" + list.length + ")" : "") + "</summary>";
+  if (!list.length) h += '<p class="hempty">Results you work out are saved here.</p>';
+  list.forEach(function (e, n) {
+    var d = new Date(e.t);
+    var tm = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    if (new Date().toDateString() !== d.toDateString())
+      tm = d.toLocaleDateString([], { month: "numeric", day: "numeric" }) + " " + tm;
+    h += '<div class="hrow" data-n="' + n + '"><div><div class="hres">' + e.r + '</div><div class="hin">' +
+      e.i + '</div></div><div class="htime">' + tm + "</div></div>";
+  });
+  if (list.length) h += '<button type="button" class="reset hclear">Clear history</button>';
+  var wasOpen = histBox.open;
+  histBox.innerHTML = h;
+  histBox.open = wasOpen;
+  histBox.querySelectorAll(".hrow").forEach(function (el) {
+    el.onclick = function () {
+      S[c] = JSON.parse(JSON.stringify(list[+el.dataset.n].s));
+      save();
+      render();
+      toast("Entries restored");
+    };
+  });
+  var cl = histBox.querySelector(".hclear");
+  if (cl) cl.onclick = function () { S.hist[c] = []; save(); renderHist(); };
 }
 
 // Plain-language description of the open calculator
@@ -936,6 +1138,32 @@ function describe() {
         "Useful for PLC timers and sensor settings.") +
       fm("Block time (ms) = length (ft) &divide; FPM &times; 60,000") +
       fm("Gap time (ms) = gap (ft) &divide; FPM &times; 60,000");
+  }
+  if (S.tab === 6) {
+    return p("Links drive frequency to conveyor speed. The motor turns at its nameplate RPM at its base " +
+        "frequency (usually 60 Hz) and changes in proportion to the drive frequency. The gearbox divides " +
+        "that speed, and the drum or sprocket turns it into belt speed.") +
+      fm("Motor RPM = nameplate RPM &times; drive Hz &divide; base Hz") +
+      fm("FPM = motor RPM &divide; gear ratio &times; &pi; &times; diameter (in) &divide; 12") +
+      p("Nameplate RPM already includes slip at full load, so real speed varies a little with load. " +
+        "For a sprocket, use its pitch diameter. Running above base frequency needs a motor and drive " +
+        "rated for it.");
+  }
+  if (S.tab === 7) {
+    return p("Scales an analog signal to the real value it stands for, or the other way round. " +
+        "Enter what the sensor reads at the bottom and top of its signal range.") +
+      fm("Value = low value + (signal &minus; signal low) &times; (high value &minus; low value) &divide; (signal high &minus; signal low)") +
+      p("PLC counts depend on the input card: 0&ndash;27648 is common on Siemens, and other makers use " +
+        "different ranges. Check the module's manual. A 4&ndash;20 mA reading well below 4 mA usually " +
+        "means a broken wire or a failed sensor.");
+  }
+  if (S.tab === 8) {
+    return p("Works out how many encoder counts the PLC sees per inch or mm of travel, " +
+        "and how many counts a set distance takes.") +
+      fm("Counts per rev = PPR &times; count mode") +
+      fm("Counts per inch = counts per rev &divide; (&pi; &times; diameter)") +
+      p("&times;4 (quadrature) counts every edge of both channels. Input frequency is the A-channel " +
+        "pulse rate at that speed; keep it under the PLC's high-speed counter limit.");
   }
   if (S.tab === 4) {
     return p("Converts between X, Y, Z angles in degrees and the quaternion [q1, q2, q3, q4] " +
@@ -986,10 +1214,11 @@ function renderResults() {
   if (Object.keys(invalid).length) {
     resultsBox.innerHTML = h + '<p class="err">Fix the highlighted box.</p>';
     setBar(["Results", "Fix the highlighted box"]);
+    lastSum = null;
     return;
   }
   var div0 = '<p class="err">Can\'t divide by 0 &mdash; check your entries.</p>';
-  function stop() { resultsBox.innerHTML = h + div0; setBar(["Results", "Can't divide by 0"]); }
+  function stop() { resultsBox.innerHTML = h + div0; setBar(["Results", "Can't divide by 0"]); lastSum = null; }
   var copies = []; // [button text, text to copy]
 
   if (S.tab === 1) {
@@ -1034,6 +1263,67 @@ function renderResults() {
         row("Factor (B/A)", fmt(F, 4)) + "</div>";
       sum = ["Set " + s.adj + " to", fmt(v, 0) + " FPM"];
     }
+  } else if (S.tab === 6) {
+    var d6 = S.c6;
+    if (d6.hz0 === 0 || d6.ratio === 0) return stop();
+    var perHz = d6.rpm / d6.hz0 / d6.ratio * Math.PI * d6.D / 12; // FPM per Hz
+    if (d6.m === "fpm") {
+      var mr = d6.rpm * d6.hz / d6.hz0, fp = rnd(mr / d6.ratio * Math.PI * d6.D / 12, 0);
+      h += big("Belt speed", fmt(fp, 0), "FPM", fmt(fp * 0.3048, 1) + " m/min");
+      h += '<div class="rows">' + row("Motor speed", fmt(mr, 0) + " RPM") +
+        row("Gearbox output", fmt(mr / d6.ratio, 1) + " RPM") +
+        row("FPM per Hz", fmt(perHz, 2)) + "</div>";
+      sum = ["Belt", fmt(fp, 0) + " FPM"];
+    } else {
+      if (perHz === 0) return stop();
+      var hz = d6.f / perHz, mr2 = d6.rpm * hz / d6.hz0;
+      h += big("Set drive to", fmt(hz, 1), "Hz");
+      h += '<div class="rows">' + row("Motor speed", fmt(mr2, 0) + " RPM") +
+        row("Gearbox output", fmt(mr2 / d6.ratio, 1) + " RPM") +
+        row("FPM per Hz", fmt(perHz, 2)) + "</div>";
+      if (hz > d6.hz0) h += '<div class="warnrow">Above the motor\'s ' + fmt(d6.hz0, 0) + ' Hz base frequency</div>';
+      sum = ["Drive", fmt(hz, 1) + " Hz"];
+    }
+  } else if (S.tab === 7) {
+    var a7 = S.c7, rg = sigRange(), su = SIG[a7.t][2], sd = SIG[a7.t][3];
+    if (rg[1] === rg[0] || a7.eh === a7.el) return stop();
+    var sig, val;
+    if (a7.m === "s2v") {
+      sig = a7.sig;
+      val = a7.el + (sig - rg[0]) * (a7.eh - a7.el) / (rg[1] - rg[0]);
+      h += big("Value", plain(val, 3), "");
+      sum = ["Value", plain(val, 3)];
+    } else {
+      val = a7.val;
+      sig = rg[0] + (val - a7.el) * (rg[1] - rg[0]) / (a7.eh - a7.el);
+      h += big("Signal", plain(sig, sd), su);
+      sum = ["Signal", plain(sig, sd) + " " + su];
+    }
+    var pct = (sig - rg[0]) / (rg[1] - rg[0]) * 100;
+    h += '<div class="rows">' + row("Percent of span", plain(pct, 1) + " %") +
+      (a7.m === "s2v" ? row("Signal", plain(sig, sd) + " " + su) : row("Value", plain(val, 3))) + "</div>";
+    var lo = Math.min(rg[0], rg[1]), hi = Math.max(rg[0], rg[1]);
+    if (sig < lo || sig > hi)
+      h += '<div class="warnrow">Outside the ' + plain(rg[0], sd) + "–" + plain(rg[1], sd) + " " + su + " range" +
+        (a7.t === "ma" && sig < 3.8 ? ": check for a broken wire or failed sensor" : "") + "</div>";
+  } else if (S.tab === 8) {
+    var e8 = S.c8;
+    if (e8.D === 0) return stop();
+    var cpr = e8.ppr * e8.x, circ = Math.PI * e8.D, cpi = cpr / circ;
+    var cnt = e8.dist * cpi;
+    h += big("Counts for " + dual("c8", e8.dist)[0], fmt(cnt, 1), "counts");
+    var per = S.c8.u === "mm" ? [fmt(cpi / MM, 4) + " per mm", fmt(cpi, 3) + " per in"]
+      : [fmt(cpi, 3) + " per in", fmt(cpi / MM, 4) + " per mm"];
+    var resIn = 1 / cpi;
+    var resTxt = S.c8.u === "mm" ? [plain(resIn * MM, 4) + " mm", "[" + plain(resIn, 5) + " in]"]
+      : [plain(resIn, 5) + " in", "[" + plain(resIn * MM, 4) + " mm]"];
+    var fA = e8.f * 12 / 60 / circ * e8.ppr; // A-channel pulses per second
+    h += '<div class="rows">' + row("Counts", per[0], per[1], per[0]) +
+      row("Counts per foot", fmt(cpi * 12, 1)) +
+      row("Counts per rev", fmt(cpr, 0)) +
+      row("Resolution", resTxt[0], resTxt[1], resTxt[0]) +
+      row("Input frequency at " + fmt(e8.f, 0) + " FPM", fA >= 1000 ? fmt(fA / 1000, 2) + " kHz" : fmt(fA, 0) + " Hz") + "</div>";
+    sum = ["Counts", fmt(cnt, 1)];
   } else {
     var c4 = S.c4;
     if (c4.m === "e2q") {
@@ -1075,6 +1365,7 @@ function renderResults() {
     el.onclick = function () { copyText(el.dataset.copy); };
   });
   setBar(sum);
+  lastSum = sum;
 }
 
 // ---- Result bar ----
@@ -1162,8 +1453,12 @@ function setBar(sum) {
   placeBar();
 }
 
-document.querySelectorAll("nav button").forEach(function (b) {
-  b.onclick = function () { S.tab = +b.dataset.tab; save(); render(); window.scrollTo(0, 0); };
+function openTab(t) {
+  S.tab = t; save(); render(); window.scrollTo(0, 0);
+}
+// A group button opens the page you last used in that group
+document.querySelectorAll("nav button[data-group]").forEach(function (b) {
+  b.onclick = function () { openTab(S.last[b.dataset.group]); };
 });
 applyTheme();
 render();

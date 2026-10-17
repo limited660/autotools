@@ -1,7 +1,7 @@
 {
   "name": "Automation Tools",
   "short_name": "AutoTools",
-  "description": "Conveyor speed, sensor block time, transfer gap, robot orientation and sensor wire colors.",
+  "description": "Conveyor speed, sensor timing, transfer gap, drive speed, analog scaling, encoder counts, robot orientation and sensor wire colors.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
