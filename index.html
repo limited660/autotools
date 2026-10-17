@@ -301,6 +301,23 @@ label.field > span { display: block; font-size: 16px; font-weight: 600; color: v
   cursor: pointer;
 }
 
+/* ---- Result-first hero card ---- */
+.hero {
+  --text: #f8fafc;
+  --muted: #cbd5e1;
+  --line: rgba(255,255,255,.14);
+  --field: rgba(255,255,255,.07);
+  background: var(--head);
+  border-color: var(--head);
+  color: var(--text);
+}
+.hero .card-top { margin-bottom: 6px; }
+.hero .reset { color: var(--muted); }
+.hero .big { font-size: 52px; color: var(--accent); }
+.hero .big small { color: var(--text); }
+.hero .big-label { color: var(--muted); }
+.hero .rows { margin-top: 12px; }
+.hero .hint { opacity: .8; }
 /* ---- Results ---- */
 .results { text-align: center; }
 .results h2, .about summary, .pagetitle {
@@ -1769,6 +1786,10 @@ function renderPage() {
   if (S.tab === 14) { renderTap(); return; }
   if (S.tab === 15) { renderPF(); return; }
   var c = "c" + S.tab;
+  // Result first: a hero card at the top holds the page name, Reset and the live answer
+  var hero = document.createElement("div");
+  hero.className = "card hero";
+  app.appendChild(hero);
   var card = document.createElement("div");
   card.className = "card";
 
@@ -1792,7 +1813,10 @@ function renderPage() {
   ttl.textContent = pg ? pg[1] : "";
   top.appendChild(ttl);
   top.appendChild(rb);
-  card.appendChild(top);
+  hero.appendChild(top);
+  resultsBox = document.createElement("div");
+  resultsBox.className = "results";
+  hero.appendChild(resultsBox);
 
   if (S.tab === 1) {
     card.appendChild(seg("Find", [["spd", "Speed"], ["rate", "Rate"]], S.c1.m, function (v) {
@@ -1872,10 +1896,6 @@ function renderPage() {
   var boxes = card.querySelectorAll("input");
   if (boxes.length) boxes[boxes.length - 1].enterKeyHint = "done";
   app.appendChild(card);
-
-  resultsBox = document.createElement("div");
-  resultsBox.className = "card results";
-  app.appendChild(resultsBox);
   renderResults();
 
   histBox = document.createElement("details");
@@ -2059,7 +2079,7 @@ function big(label, val, unit, alt) {
 function ms(lenIn, fpm) { return lenIn / 12 / fpm * 60000; }
 
 function renderResults() {
-  var h = "<h2>Results</h2>";
+  var h = ""; // the page name above already heads the hero card
   var sum = null; // [label, value] for the slim bar
   if (Object.keys(invalid).length) {
     resultsBox.innerHTML = h + '<p class="err">Fix the highlighted box.</p>';
