@@ -484,6 +484,12 @@ html.nozoom #app { touch-action: pan-y; }
   color: var(--muted);
   text-align: center;
 }
+.pf > div { display: grid; grid-template-columns: 74px 1fr; column-gap: 10px; padding: 9px 0;
+  border-bottom: 1px solid var(--line); text-align: left; }
+.pf > div:last-child { border-bottom: 0; }
+.pf b { color: var(--accent); font-size: 16px; grid-row: span 2; }
+.pf span { font-weight: 600; font-size: 16px; }
+.pf small { color: var(--muted); font-size: 14px; line-height: 1.3; }
 .secgap { height: 16px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
 .secnote { margin: 0 0 10px; font-size: 14px; color: var(--muted); text-align: center; }
 .sym.wide svg { max-width: 300px; }
@@ -598,7 +604,8 @@ var DEF = {
   last: { conv: 1, ctrl: 7, ref: 5, robot: 4 }, // last page opened in each group
   c9: { k: "elec" },
   c11: { mask: "255.255.255.0", ip: "" },
-  c14: { k: "unc" }
+  c14: { k: "unc" },
+  c15: { k: "par" }
 };
 var KEY = "autotools-v1";
 var S = JSON.parse(JSON.stringify(DEF));
@@ -606,7 +613,7 @@ try {
   // Older versions saved under "convcalc-v1"; carry those values over
   var saved = JSON.parse(localStorage.getItem(KEY) || localStorage.getItem("convcalc-v1") || "null");
   if (saved) {
-    ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c11", "c14"].forEach(function (c) {
+    ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c11", "c14", "c15"].forEach(function (c) {
       if (saved[c]) for (var k in S[c]) if (k in saved[c]) S[c][k] = saved[c][k];
     });
     if (saved.tab) S.tab = saved.tab;
@@ -1209,12 +1216,111 @@ function renderTap() {
   setBar(["", ""]);
 }
 
+// ---- PF525 tab: PowerFlex 525 drive parameters and fault codes ----
+// [code, name, what it's for]
+var PF_PARAMS = [
+  ["Basic Program", [
+    ["P031", "Motor NP Volts", "Motor nameplate voltage"],
+    ["P032", "Motor NP Hertz", "Motor nameplate frequency"],
+    ["P033", "Motor OL Current", "Overload trip current; usually nameplate FLA"],
+    ["P034", "Motor NP FLA", "Motor nameplate full-load amps"],
+    ["P035", "Motor NP Poles", "Number of motor poles"],
+    ["P036", "Motor NP RPM", "Motor nameplate speed"],
+    ["P037", "Motor NP Power", "Motor nameplate power"],
+    ["P039", "Torque Perf Mode", "V/Hz, sensorless vector, economy or vector"],
+    ["P040", "Autotune", "Static or rotate tune after entering the nameplate"],
+    ["P041", "Accel Time 1", "Seconds from 0 to max frequency"],
+    ["P042", "Decel Time 1", "Seconds from max frequency to 0"],
+    ["P043", "Minimum Freq", "Lowest running speed"],
+    ["P044", "Maximum Freq", "Highest running speed"],
+    ["P045", "Stop Mode", "0 = Ramp, 1 = Coast (more options for DC brake)"],
+    ["P046", "Start Source 1", "Where run commands come from; 5 = EtherNet/IP"],
+    ["P047", "Speed Reference1", "Where speed comes from; 15 = EtherNet/IP"],
+    ["P048", "Start Source 2", "Second start source, picked by a digital input or network"],
+    ["P049", "Speed Reference2", "Second speed source"],
+    ["P053", "Reset To Defalts", "Sets parameters back to factory (spelled this way on the drive)"]
+  ]],
+  ["Display", [
+    ["b001", "Output Freq", "Frequency the drive is putting out"],
+    ["b002", "Commanded Freq", "Frequency it's being told to run"],
+    ["b003", "Output Current", "Motor amps"],
+    ["b004", "Output Voltage", "Motor volts"],
+    ["b005", "DC Bus Voltage", "Bus voltage inside the drive"],
+    ["b006", "Drive Status", "Running, forward, accelerating, decelerating bits"],
+    ["b007", "Fault 1 Code", "Most recent fault"]
+  ]],
+  ["EtherNet/IP", [
+    ["C128", "EN Addr Sel", "1 = use the IP set in parameters, 2 = BOOTP"],
+    ["C129-C132", "EN IP Addr Cfg 1-4", "IP address, one number per parameter"],
+    ["C133-C136", "EN Subnet Cfg 1-4", "Subnet mask"],
+    ["C137-C140", "EN Gateway Cfg 1-4", "Gateway"]
+  ]]
+];
+var PF_FAULTS = [
+  ["F002", "Auxiliary In", "External fault input opened"],
+  ["F003", "Power Loss", "Incoming power dropped out"],
+  ["F004", "UnderVoltage", "DC bus too low: weak or missing incoming phase"],
+  ["F005", "OverVoltage", "DC bus too high: decel too fast or high line voltage"],
+  ["F006", "Motor Stalled", "Motor can't accelerate the load"],
+  ["F007", "Motor Overload", "Motor current over P033 too long: check load and P033"],
+  ["F008", "Heatsink OvrTmp", "Drive too hot: check airflow, fan and ambient"],
+  ["F012", "HW OverCurrent", "Very high current: short, or accel too fast"],
+  ["F013", "Ground Fault", "Current to ground: check motor and cable insulation"],
+  ["F015", "Load Loss", "Current dropped too low, e.g. a broken belt"],
+  ["F021", "Output Ph Loss", "A motor phase is open"],
+  ["F029", "Analog In Loss", "4-20 mA or 0-10 V speed signal lost"],
+  ["F033", "Auto Rstrt Tries", "Auto restarts ran out"],
+  ["F038-F040", "Phase U/V/W to Gnd", "A motor phase is shorted to ground"],
+  ["F041-F043", "Phase UV/UW/VW Short", "Two motor phases shorted together"],
+  ["F048", "Params Defaulted", "Parameters were reset to factory"],
+  ["F059", "Safety Open", "Safe torque off inputs are open"],
+  ["F063", "SW OverCurrent", "Current over the software limit"],
+  ["F064", "Drive Overload", "Drive's own current rating exceeded"],
+  ["F071", "DSI Net Loss", "Lost the network on the DSI port"],
+  ["F072", "Opt Net Loss", "Lost the network on the option card"],
+  ["F073", "EN Net Loss", "Lost the network on the built-in EtherNet/IP"],
+  ["F080", "Autotune Failure", "Autotune didn't finish"],
+  ["F081", "DSI Comm Loss", "Lost the DSI device (keypad or adapter)"],
+  ["F082", "Opt Comm Loss", "Lost communication with the option card"],
+  ["F083", "EN Comm Loss", "Lost the I/O connection from the PLC on EtherNet/IP"],
+  ["F100", "Parameter Chksum", "Saved parameters are corrupt: reset and reload"],
+  ["F111", "Safety Hardware", "Safety circuit hardware fault"]
+];
+function pfList(rows) {
+  return '<div class="pf">' + rows.map(function (r) {
+    return "<div><b>" + r[0] + "</b><span>" + r[1] + "</span><small>" + r[2] + "</small></div>";
+  }).join("") + "</div>";
+}
+function renderPF() {
+  var card = document.createElement("div");
+  card.className = "card";
+  card.appendChild(seg("Show", [["par", "Parameters"], ["flt", "Faults"]], S.c15.k, function (v) {
+    S.c15.k = v; save(); render();
+  }));
+  var box = document.createElement("div");
+  box.className = "swipebox"; // slides on its own when swiping between choices
+  box.innerHTML = S.c15.k === "flt" ? pfList(PF_FAULTS) : PF_PARAMS.map(function (sec) {
+    return '<h2 class="sechead">' + sec[0] + "</h2>" + pfList(sec[1]);
+  }).join('<div class="secgap"></div>');
+  card.appendChild(box);
+  app.appendChild(card);
+  var about = document.createElement("details");
+  about.className = "card about";
+  about.innerHTML = "<summary>Notes</summary>" +
+    "<p>The most-used PowerFlex 525 parameters and faults, as a quick guide. Names are shown the way the " +
+    "drive displays them. Check the PowerFlex 520-series user manual for your drive's firmware before " +
+    "changing settings.</p>" +
+    "<p>Clear a fault with the Stop key, a reset from the PLC, or by cycling power once the cause is fixed.</p>";
+  app.appendChild(about);
+  setBar(["", ""]);
+}
+
 // Tools are grouped; the bottom bar picks the group, the strip under the
 // header picks the page within it
 var GROUPS = {
   conv: [[1, "Conveyor PPM"], [2, "Sensor Timing"], [3, "Pack Gapping"], [6, "VFD"]],
   ctrl: [[7, "Analog"], [8, "Encoder"], [11, "IP/Subnet"]],
-  ref: [[5, "Wires"], [9, "Symbols"], [12, "AWG"], [14, "Tap Drill"]],
+  ref: [[5, "Wires"], [9, "Symbols"], [12, "AWG"], [14, "Tap Drill"], [15, "PF525"]],
   robot: [[4, "Orientation"]]
 };
 function groupOf(t) {
@@ -1546,6 +1652,7 @@ function renderPage() {
   if (S.tab === 11) { renderSubnet(); return; }
   if (S.tab === 12) { renderAWG(); return; }
   if (S.tab === 14) { renderTap(); return; }
+  if (S.tab === 15) { renderPF(); return; }
   var c = "c" + S.tab;
   var card = document.createElement("div");
   card.className = "card";
@@ -2077,7 +2184,8 @@ var swipe = null;
 var SWIPE_SUBS = {
   5: ["c5", "pins", [4, 5]],
   9: ["c9", "k", ["elec", "pneu", "hyd", "valves"]],
-  14: ["c14", "k", ["unc", "unf", "m"]]
+  14: ["c14", "k", ["unc", "unf", "m"]],
+  15: ["c15", "k", ["par", "flt"]]
 };
 var GROUP_ORDER = ["conv", "ctrl", "ref", "robot"];
 // Returns what a swipe one step left (+1) or right (-1) does, or null if there's nothing that way
