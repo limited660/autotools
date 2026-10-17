@@ -194,8 +194,6 @@ main {
 }
 /* Four or more choices: smaller text so they fit a phone */
 .seg.many button { font-size: 14px; padding: 10px 2px; min-width: 0; }
-.seg.ic button { font-size: 13px; padding: 8px 2px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.seg.ic svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
 label.field { display: block; margin-bottom: 12px; }
 label.field > span { display: block; font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; text-align: center; }
@@ -953,14 +951,11 @@ function seg(label, opts, cur, onPick) {
     w.appendChild(p);
   }
   var s = document.createElement("div");
-  // an option can carry an icon (svg path data) as a third item
-  var icons = opts[0].length > 2;
-  s.className = "seg" + (icons ? " ic" : opts.length > 3 ? " many" : "");
+  s.className = "seg" + (opts.length > 3 ? " many" : "");
   opts.forEach(function (o) {
     var b = document.createElement("button");
     b.type = "button";
-    if (icons) b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + o[2] + '"/></svg>' + o[1];
-    else b.textContent = o[1];
+    b.textContent = o[1];
     b.setAttribute("aria-pressed", o[0] === cur ? "true" : "false");
     b.onclick = function () { onPick(o[0]); };
     s.appendChild(b);
@@ -1924,12 +1919,7 @@ function renderSymbols() {
   var card = document.createElement("div");
   card.className = "card";
   if (["elec", "pneu", "hyd", "valves"].indexOf(S.c9.k) < 0) S.c9.k = "elec";
-  card.appendChild(seg("Type", [
-    ["elec", "Electrical", "M13 2L4 14h7l-1 8 9-12h-7z"],
-    ["pneu", "Pneumatic", "M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"],
-    ["hyd", "Hydraulic", "M12 3s-6 7-6 11a6 6 0 0 0 12 0c0-4-6-11-6-11z"],
-    ["valves", "Valves", "M3 7v10l9-5zM21 7v10l-9-5zM12 12V4M8 4h8"]
-  ], S.c9.k, function (v) {
+  card.appendChild(seg("Type", [["elec", "Electrical"], ["pneu", "Pneumatic"], ["hyd", "Hydraulic"], ["valves", "Valves"]], S.c9.k, function (v) {
     S.c9.k = v; save(); render();
   }));
   var box = document.createElement("div");
