@@ -1453,7 +1453,7 @@ function renderTap() {
   var card = document.createElement("div");
   card.className = "card";
   if (["unc", "unf", "m", "chart"].indexOf(S.c14.k) < 0) S.c14.k = "unc";
-  card.appendChild(seg("Thread", [["unc", "UNC"], ["unf", "UNF"], ["m", "Metric"], ["chart", "Drills"]], S.c14.k, function (v) {
+  card.appendChild(seg("Tap Drill", [["unc", "UNC"], ["unf", "UNF"], ["m", "Metric"], ["chart", "Drills"]], S.c14.k, function (v) {
     S.c14.k = v; save(); render();
   }));
   var metric = S.c14.k === "m";
@@ -1725,6 +1725,23 @@ function MAG(x, y) { return "l-7 3l14 5l-14 5l7 3"; }
 // Moves a symbol up (negative) or down (positive)
 function SHIFT(dy, body) { return '<g transform="translate(0 ' + dy + ')">' + body + "</g>"; }
 // Switch terminals: circles at x = 38 and 82 with leads out to the edges, at height y
+// Photo-eyes: drawn in a 0-100 tall box like the library symbols (leads trimmed to y 10-90),
+// then scaled to fill the 120 x 80 card
+function PE(x, body) { return '<g transform="translate(' + x + ' -7.5) scale(.95)">' + body + "</g>"; }
+function PE_EYE(x, y) { // the sensor diamond
+  return '<path transform="matrix(.707107 .707107 -.707107 .707107 ' + x + " " + y + ')" d="M0 0h10v10H0z"/>';
+}
+// enlarge the small marks inside a sensor body (light arrows, emitter, target) about their center
+function PE_BIG(cx, cy, k, body) {
+  return '<g transform="translate(' + cx + " " + cy + ") scale(" + k + ") translate(" + (-cx) + " " + (-cy) + ')">' + body + "</g>";
+}
+function PE_ARROWS(x) { // emitter and receiver arrows inside the body
+  return '<path d="M' + x + " 59h7l-4-1v2l4-1M" + (x + 7) + ' 66h-7l4-1v2l-4-1" fill="currentColor"/>';
+}
+var PE_BODY = '<path d="M5 25h50v50H5z"/>' + PE_EYE(17.5, 30.43) + '<path d="M15 33v9M20 42v-9"/>';
+var PE_SW = '<path d="M30 50h5l8-3M43 50h5M60 50h-5"/><circle cx="55" cy="50" r="2.5"/>'; // output contact
+var PE_LEADS = '<path d="M30 10v12.5M30 90V77.5M72 50H57.5"/><circle cx="30" cy="25" r="2.5"/>' +
+  '<circle cx="30" cy="75" r="2.5"/>';
 function TERMS(y) {
   return '<path d="M5 ' + y + 'H33M87 ' + y + 'H115"/><circle cx="38" cy="' + y + '" r="5"/><circle cx="82" cy="' + y + '" r="5"/>';
 }
@@ -1743,12 +1760,12 @@ var SYMBOLS = {
     ["Normally open contact", "NO: closes when the coil or device is on", '<path d="M5 40H45M45 20V60M75 20V60M75 40H115"/>'],
     ["Normally closed contact", "NC: opens when the coil or device is on", '<path d="M5 40H45M45 20V60M75 20V60M75 40H115M36 64L84 16"/>'],
     ["Relay / contactor coil", "Labeled CR, M, etc.", '<path d="M5 40H40M80 40H115"/><circle cx="60" cy="40" r="20"/>' + txt(60, 40, "CR", 15)],
-    ["Motor", "", '<path d="M5 40H38M82 40H115"/><circle cx="60" cy="40" r="22"/>' + txt(60, 40, "M", 22)],
+    ["Motor", "Driven by the circuit; label shows the motor number", '<path d="M5 40H38M82 40H115"/><circle cx="60" cy="40" r="22"/>' + txt(60, 40, "M", 22)],
     ["Pushbutton, NO", "Momentary, closes when pressed",
       '<path d="M5 55H34M86 55H115M30 40H90M60 40V18M50 18H70"/><circle cx="38" cy="55" r="4"/><circle cx="82" cy="55" r="4"/>'],
     ["Pushbutton, NC", "Momentary, opens when pressed",
       '<path d="M5 40H34M86 40H115M30 46H90M60 46V14M50 14H70"/><circle cx="38" cy="40" r="4"/><circle cx="82" cy="40" r="4"/>'],
-    ["Fuse", "", '<path d="M5 40H115"/><rect x="35" y="30" width="50" height="20"/>'],
+    ["Fuse", "Opens the circuit when current is too high", '<path d="M5 40H115"/><rect x="35" y="30" width="50" height="20"/>'],
     ["Disconnect", "3-pole, operated together", POLES(function (x) {
       return '<path d="M' + x + ' 4V30M' + x + ' 50V76M' + x + ' 50L' + (x + 8) + ' 31"/>';
     }, 41)],
@@ -1765,39 +1782,54 @@ var SYMBOLS = {
       return '<path d="M' + x + ' 2V16' + ARC(x, 16) + 'V40' + THERM(x, 40) + 'V62' + MAG(x, 62) + 'V78"/>';
     }, 26)],
     ["Pilot light", "Letter shows the color, e.g. R, G", '<path d="M5 40H42M78 40H115M47 27L41 21M73 27L79 21M47 53L41 59M73 53L79 59"/><circle cx="60" cy="40" r="18"/>' + txt(60, 40, "R", 16)],
-    ["Ground", "", '<path d="M60 10V40M36 40H84M44 50H76M52 60H68"/>'],
-    ["Transformer", "", '<path d="M20 12H40a7 7 0 0 1 0 14a7 7 0 0 1 0 14a7 7 0 0 1 0 14a7 7 0 0 1 0 14H20' +
+    ["Ground", "Connection to earth or the machine frame", '<path d="M60 10V40M36 40H84M44 50H76M52 60H68"/>'],
+    ["Transformer", "Steps voltage up or down, e.g. 480 V to 120 V", '<path d="M20 12H40a7 7 0 0 1 0 14a7 7 0 0 1 0 14a7 7 0 0 1 0 14a7 7 0 0 1 0 14H20' +
       'M100 12H80a7 7 0 0 0 0 14a7 7 0 0 0 0 14a7 7 0 0 0 0 14a7 7 0 0 0 0 14H100M57 10V70M63 10V70"/>'],
-    ["Resistor", "", '<path d="M5 40H30L35 28L45 52L55 28L65 52L75 28L85 52L90 40H115"/>'],
-    ["Capacitor", "", '<path d="M5 40H54M54 22V58M66 22V58M66 40H115"/>'],
+    ["Resistor", "Limits current", '<path d="M5 40H30L35 28L45 52L55 28L65 52L75 28L85 52L90 40H115"/>'],
+    ["Capacitor", "Stores charge; filters or delays", '<path d="M5 40H54M54 22V58M66 22V58M66 40H115"/>'],
     ["Diode", "Current flows toward the bar", '<path d="M5 40H45M75 22V58M75 40H115"/><path d="M45 22V58L75 40Z" fill="currentColor"/>'],
-    ["Limit switch, NO", "", TERMS(26) + '<path d="M42.5 28L84 52M42.5 28L70 54L73 45.4"/>'],
-    ["Limit switch, NO held closed", "", SHIFT(-4, TERMS(30) + '<path d="M43 31L88 35.7M43 31L72 43L73 34.1"/>')],
-    ["Limit switch, NC", "", TERMS(40) + '<path d="M43 39L88 34.4M43 40L73 44V35.9"/>'],
-    ["Limit switch, NC held open", "", SHIFT(-4, TERMS(44) + '<path d="M43 44H72V33.7M43 44L88 28"/>')],
-    ["Foot switch, NO", "", SHIFT(-4, TERMS(52) + '<path d="M42.5 49.9L81.6 33.2M55.7 37.7L66.7 34.3L67.9 39.1"/>')],
-    ["Foot switch, NC", "", SHIFT(8, TERMS(40) + '<path d="M43 40L88 45.8M58.7 35.3L70.1 37.5L70.7 43.6"/>')],
-    ["Pressure / vacuum switch, NO", "", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V50M54 64H74A10 14 0 0 0 54 64"/>')],
-    ["Pressure / vacuum switch, NC", "", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V52M54 66H74A10 14 0 0 0 54 66"/>')],
-    ["Liquid level switch, NO", "", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V48"/><circle cx="64" cy="58" r="10"/>')],
-    ["Liquid level switch, NC", "", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V50"/><circle cx="64" cy="60" r="10"/>')],
-    ["Temperature switch, NO", "", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V40H71V48H57V56H64V64"/>')],
-    ["Temperature switch, NC", "", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V40H71V48H57V56H64V64"/>')],
+    ["Limit switch, NO", "Closes when the machine part hits it", TERMS(26) + '<path d="M42.5 28L84 52M42.5 28L70 54L73 45.4"/>'],
+    ["Limit switch, NO held closed", "Shown already pressed by the machine at rest", SHIFT(-4, TERMS(30) + '<path d="M43 31L88 35.7M43 31L72 43L73 34.1"/>')],
+    ["Limit switch, NC", "Opens when the machine part hits it", TERMS(40) + '<path d="M43 39L88 34.4M43 40L73 44V35.9"/>'],
+    ["Limit switch, NC held open", "Shown already pressed by the machine at rest", SHIFT(-4, TERMS(44) + '<path d="M43 44H72V33.7M43 44L88 28"/>')],
+    ["Foot switch, NO", "Closes when the pedal is pressed", SHIFT(-4, TERMS(52) + '<path d="M42.5 49.9L81.6 33.2M55.7 37.7L66.7 34.3L67.9 39.1"/>')],
+    ["Foot switch, NC", "Opens when the pedal is pressed", SHIFT(8, TERMS(40) + '<path d="M43 40L88 45.8M58.7 35.3L70.1 37.5L70.7 43.6"/>')],
+    ["Pressure / vacuum switch, NO", "Closes when pressure reaches its setting", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V50M54 64H74A10 14 0 0 0 54 64"/>')],
+    ["Pressure / vacuum switch, NC", "Opens when pressure reaches its setting", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V52M54 66H74A10 14 0 0 0 54 66"/>')],
+    ["Liquid level switch, NO", "Float closes it when the level rises", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V48"/><circle cx="64" cy="58" r="10"/>')],
+    ["Liquid level switch, NC", "Float opens it when the level rises", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V50"/><circle cx="64" cy="60" r="10"/>')],
+    ["Temperature switch, NO", "Closes when it gets hot enough", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V40H71V48H57V56H64V64"/>')],
+    ["Temperature switch, NC", "Opens when it gets hot enough", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V40H71V48H57V56H64V64"/>')],
     ["Flow switch, NO", "Air, water, etc.", SHIFT(2, TERMS(18) + BLADE_NO + '<path d="M64 31V62H76L64 42"/>')],
-    ["Flow switch, NC", "Air, water, etc.", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V60H76L64 40"/>')]
+    ["Flow switch, NC", "Air, water, etc.", SHIFT(-4, TERMS(24) + BLADE_NC + '<path d="M64 21V60H76L64 40"/>')],
+    // photo-eyes, drawn after the single-width sensor symbols in common schematic libraries
+    ["Photo-eye, diffuse", "Sees light bouncing back off the part", PE(23, PE_BODY + PE_SW + PE_LEADS +
+      PE_BIG(17.5, 62.5, 1.15, '<path d="M9 56h2v5H9zM9 64h2v5H9z" fill="currentColor"/>' + PE_ARROWS(12.5) +
+      '<path d="M22 56h4v13h-4z"/><path d="M22 60l4-4M22 65l4-4M22 69l4-4"/>'))], // the target, hatched
+    ["Photo-eye, retroreflective", "Sees light bounced back from a reflector", PE(23, PE_BODY + PE_SW + PE_LEADS +
+      PE_BIG(17.5, 62.5, 1.15, '<path d="M10 56h2v5h-2zM10 64h2v5h-2z" fill="currentColor"/>' + PE_ARROWS(13.5) +
+      '<path d="M23 56h2v13h-2z"/>'))], // the reflector
+    ["Photo-eye, through-beam", "Transmitter and receiver", PE(4,
+      '<path d="M45 25h50v50H45zM8 25h24v50H8z"/>' + PE_EYE(57.5, 30.43) + '<path d="M55 33v9M60 42v-9"/>' +
+      PE_EYE(20, 30.43) + '<path d="M17.5 33v9M22.5 42v-9"/>' +
+      PE_BIG(57.5, 62.5, 1.4, '<path d="M61 60h2v5h-2zM52 62h7l-4-1v2l4-1" fill="currentColor"/>') + // receiver
+      PE_BIG(20, 62.5, 1.4, '<path d="M14 60h2v5h-2zM19 62h7l-4-1v2l4-1" fill="currentColor"/>') + // transmitter
+      '<path d="M70 50h5l8-3M83 50h5M100 50h-5M70 20v5M70 80v-5M20 20v5M20 80v-5M70 10v12.5M70 90V77.5M20 10v12.5M20 90V77.5M110 50H97.5"/>' +
+      '<circle cx="95" cy="50" r="2.5"/><circle cx="70" cy="25" r="2.5"/><circle cx="70" cy="75" r="2.5"/>' +
+      '<circle cx="20" cy="25" r="2.5"/><circle cx="20" cy="75" r="2.5"/>')]
   ],
   pneu: [
     ["Pressure source", "Air supply", '<circle cx="46" cy="40" r="14"/><circle cx="46" cy="40" r="3" fill="currentColor"/><path d="M60 40H112"/>'],
-    ["Compressor", "", '<circle cx="60" cy="42" r="22"/><path d="M60 20V5M14 42H38"/><path d="M52 31H68L60 20Z"/>'],
+    ["Compressor", "Makes compressed air", '<circle cx="60" cy="42" r="22"/><path d="M60 20V5M14 42H38"/><path d="M52 31H68L60 20Z"/>'],
     ["Exhaust", "Port vents to the air", '<path d="M60 8V30M48 30H72L60 50Z"/>'],
-    ["Silencer", "", '<path d="M60 8V26M52 36H68M52 44H68M52 52H68"/><rect x="47" y="26" width="26" height="34"/>'],
+    ["Silencer", "Quiets exhaust air", '<path d="M60 8V26M52 36H68M52 44H68M52 52H68"/><rect x="47" y="26" width="26" height="34"/>'],
     ["Single-acting cylinder", "Spring return", '<rect x="10" y="25" width="70" height="30"/><path d="M38 25V55M38 40H112M22 55V70"/>' +
       '<path d="M42 31L48 49L54 31L60 49L66 31L72 49L78 31"/>'],
-    ["Double-acting cylinder", "", CYL2],
-    ["Filter", "", FILTER],
-    ["Lubricator", "", '<path d="M60 15L85 40L60 65L35 40ZM8 40H35M85 40H112M60 26V44"/><path d="M55 44H65L60 52Z" fill="currentColor"/>'],
-    ["Pressure gauge", "", GAUGE],
-    ["Air motor", "", '<circle cx="60" cy="42" r="22"/><path d="M60 20V5M82 42H110"/><path d="M52 20H68L60 31Z"/>'],
+    ["Double-acting cylinder", "Air pushes it both ways", CYL2],
+    ["Filter", "Removes dirt and water from the air", FILTER],
+    ["Lubricator", "Adds oil mist to the air", '<path d="M60 15L85 40L60 65L35 40ZM8 40H35M85 40H112M60 26V44"/><path d="M55 44H65L60 52Z" fill="currentColor"/>'],
+    ["Pressure gauge", "Shows line pressure", GAUGE],
+    ["Air motor", "Turns air flow into rotation", '<circle cx="60" cy="42" r="22"/><path d="M60 20V5M82 42H110"/><path d="M52 20H68L60 31Z"/>'],
     ["Pressure regulator", "Holds outlet pressure steady", '<rect x="40" y="20" width="40" height="40"/><path d="M60 60V72M60 20V8M80 40H84"/>' +
       arrow(60, 54, 60, 26) + spring(84, 40) + '<path d="M60 14H30V40H40" stroke-dasharray="5 4"/>'],
     ["Check valve", "Lets air flow one way only", CHECK],
@@ -1833,8 +1865,8 @@ var SYMBOLS = {
   ],
   act: [
     ["Manual (general)", "Operated by hand", VBOX + CB + '<path d="M60 31V49M60 40H66"/>'],
-    ["Pushbutton", "", VBOX + CB + '<path d="M66 40H61M61 31a9 9 0 0 0 0 18Z"/>'],
-    ["Lever", "", VBOX + CB + '<path d="M58 54L67 26"/><circle cx="68.2" cy="22.2" r="3.5"/>'],
+    ["Pushbutton", "Pressed by hand to shift the valve", VBOX + CB + '<path d="M66 40H61M61 31a9 9 0 0 0 0 18Z"/>'],
+    ["Lever", "Hand lever shifts the valve", VBOX + CB + '<path d="M58 54L67 26"/><circle cx="68.2" cy="22.2" r="3.5"/>'],
     ["Pedal", "Foot operated", VBOX + CB + '<path d="M56 52L63 33H66"/>'],
     ["Mechanical", "Plunger or roller, pressed by a cam or moving part", VBOX + CB + '<path d="M66 40H64"/><circle cx="59" cy="40" r="5"/>'],
     ["Spring", "Returns the valve to rest", VBOX + '<path d="M80 40l-4 -6l-4 12l-4 -12l-4 12l-4 -12l-4 12l-4 -6"/>'],
@@ -1857,12 +1889,12 @@ var SYMBOLS = {
   ],
   hyd: [
     ["Pump", "Fixed displacement", '<circle cx="60" cy="42" r="22"/><path d="M60 20V5M14 42H38"/><path d="M52 31H68L60 20Z" fill="currentColor"/>'],
-    ["Hydraulic motor", "", '<circle cx="60" cy="42" r="22"/><path d="M60 20V5M82 42H110"/><path d="M52 20H68L60 31Z" fill="currentColor"/>'],
-    ["Tank / reservoir", "", '<path d="M38 42V66H82V42M60 8V58"/>'],
-    ["Double-acting cylinder", "", CYL2],
-    ["Filter", "", FILTER],
+    ["Hydraulic motor", "Turns oil flow into rotation", '<circle cx="60" cy="42" r="22"/><path d="M60 20V5M82 42H110"/><path d="M52 20H68L60 31Z" fill="currentColor"/>'],
+    ["Tank / reservoir", "Holds oil; return lines end here", '<path d="M38 42V66H82V42M60 8V58"/>'],
+    ["Double-acting cylinder", "Oil pushes it both ways", CYL2],
+    ["Filter", "Removes dirt from the oil", FILTER],
     ["Accumulator", "Gas charged", '<rect x="44" y="12" width="32" height="52" rx="16"/><path d="M44 38H76M60 64V76M54 22H66L60 31Z"/>'],
-    ["Pressure gauge", "", GAUGE],
+    ["Pressure gauge", "Shows line pressure", GAUGE],
     ["Lines", "Working, pilot, drain", '<path d="M8 18H112"/><path d="M8 40H112" stroke-dasharray="10 6"/><path d="M8 62H112" stroke-dasharray="4 4"/>'],
     ["Relief valve", "Opens to tank above its setting", '<rect x="40" y="20" width="40" height="40"/><path d="M60 60V72M60 20V8M80 40H84"/>' +
       arrow(50, 54, 50, 26) + spring(84, 40) + '<path d="M60 66H30V40H40" stroke-dasharray="5 4"/>'],

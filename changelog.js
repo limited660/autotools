@@ -1,6 +1,11 @@
 // What's New. Add a new entry at the top with every version (same number as version.js).
 // Keep each line short and in plain words: what changed for the person using the app.
 var CHANGELOG = [
+  { v: "v70", d: "10/17/2026", n: [
+    "New photo-eye symbols in Electrical: diffuse, retroreflective and through-beam",
+    "Every symbol now has a short definition under its name",
+    "Tap Drill selector heading reads Tap Drill"
+  ] },
   { v: "v69", d: "10/17/2026", n: [
     "Wiring: 4-pin and 5-pin combined into one Cables list (pin 5 marked 5-Pin Only)",
     "Wiring: NO/NC is now Sensors, with photo-eye types, proximity sensors and outputs explained",
