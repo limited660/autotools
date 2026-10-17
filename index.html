@@ -1518,7 +1518,14 @@ function setZoom(on) {
   document.documentElement.classList.toggle("nozoom", !on);
 }
 
+// Redraw the page but stay where you were scrolled (clearing the page for a moment
+// would otherwise drop you back to the top). openTab scrolls to the top itself.
 function render() {
+  var y = window.scrollY;
+  renderPage();
+  window.scrollTo(0, y);
+}
+function renderPage() {
   // The old Valves page now lives on the Symbols page
   if (S.tab === 10) { S.tab = 9; S.c9.k = "valves"; }
   if (S.tab === 13) S.tab = 7; // the AI wiring page was removed
@@ -2086,7 +2093,7 @@ function pageAt(step, onSub, onNav) {
   var sub = onSub && SWIPE_SUBS[S.tab];
   if (sub) {
     var opts = sub[2], v = opts[opts.indexOf(S[sub[0]][sub[1]]) + step];
-    return v === undefined ? null : function () { S[sub[0]][sub[1]] = v; save(); render(); window.scrollTo(0, 0); };
+    return v === undefined ? null : function () { S[sub[0]][sub[1]] = v; save(); render(); };
   }
   var list = GROUPS[groupOf(S.tab)], i = list.findIndex(function (pg) { return pg[0] === S.tab; });
   var t = list[i + step] ? list[i + step][0] : null;
