@@ -1,6 +1,13 @@
 // What's New. Add a new entry at the top with every version (same number as version.js).
 // Keep each line short and in plain words: what changed for the person using the app.
 var CHANGELOG = [
+  { v: "v68", d: "10/17/2026", n: [
+    "New look: graphite and safety-yellow colors, big page titles, list-style fields and a floating bottom bar",
+    "Wires is now Wiring, with a new Colors choice listing wire color abbreviations (solid and striped)",
+    "PNP / NPN wire key split into Sensor Cable and Panel Power",
+    "Tap Drill has a new Drills chart: every number, letter, fractional and metric drill from 0 to 1 inch",
+    "Metric tap list no longer says \"fine\"; AWG now comes before Symbols"
+  ] },
   { v: "v67", d: "10/17/2026", n: [
     "Back to the previous layout: inputs first, results below"
   ] },

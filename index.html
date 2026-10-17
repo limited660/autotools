@@ -5,52 +5,66 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Automation Tools</title>
 <meta name="description" content="Conveyor speed, sensor timing, transfer gap, drive speed, analog scaling, encoder counts, robot orientation and sensor wire colors.">
-<meta name="theme-color" content="#1e293b">
+<meta name="theme-color" content="#f4f4f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d1014" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root {
-  --bg: #f1f5f9;
+  /* graphite + safety yellow */
+  --bg: #f4f4f5;
   --card: #ffffff;
-  --text: #0f172a;
-  --muted: #475569;
-  --line: #e2e8f0;
-  --field: #f8fafc;
-  --accent: #d97706;
-  --accent-text: #ffffff;
-  --head: #1e293b;
-  --head-text: #f8fafc;
+  --card2: #f4f4f5; /* rows and tracks inside a card */
+  --text: #18181b;
+  --muted: #71717a;
+  --line: #e4e4e7;
+  --field: #f4f4f5;
+  --accent: #eab308;
+  --accent-text: #18181b;
+  --accent-ink: #a16207; /* accent used as text: darker so it reads on white */
+  --head: #f4f4f5;
+  --head-text: #18181b;
   --error: #b91c1c;
-  --nav-h: 64px;
+  --nav-bg: rgba(255,255,255,.88);
+  --shadow: 0 1px 2px rgba(0,0,0,.05), 0 8px 24px rgba(0,0,0,.06);
+  --nav-h: 60px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0b1120;
-    --card: #162032;
-    --text: #e2e8f0;
-    --muted: #cbd5e1;
-    --line: #334155;
-    --field: #0f192b;
-    --accent: #f59e0b;
-    --accent-text: #111827;
-    --head: #0f172a;
-    --head-text: #f8fafc;
+    --bg: #0d1014;
+    --card: #161a20;
+    --card2: #1d222a;
+    --text: #f4f4f5;
+    --muted: #a1a1aa;
+    --line: #262c35;
+    --field: #1d222a;
+    --accent: #facc15;
+    --accent-text: #18181b;
+    --accent-ink: #facc15;
+    --head: #0d1014;
+    --head-text: #f4f4f5;
     --error: #f87171;
+    --nav-bg: rgba(22,26,32,.88);
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0b1120;
-  --card: #162032;
-  --text: #e2e8f0;
-  --muted: #cbd5e1;
-  --line: #334155;
-  --field: #0f192b;
-  --accent: #f59e0b;
-  --accent-text: #111827;
-  --head: #0f172a;
-  --head-text: #f8fafc;
+  --bg: #0d1014;
+  --card: #161a20;
+  --card2: #1d222a;
+  --text: #f4f4f5;
+  --muted: #a1a1aa;
+  --line: #262c35;
+  --field: #1d222a;
+  --accent: #facc15;
+  --accent-text: #18181b;
+  --accent-ink: #facc15;
+  --head: #0d1014;
+  --head-text: #f4f4f5;
   --error: #f87171;
+  --nav-bg: rgba(22,26,32,.88);
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -319,6 +333,17 @@ label.field > span { display: block; font-size: 16px; font-weight: 600; color: v
 .awg span:nth-last-child(-n+4) { border-bottom: 0; }
 .awg.c3 { grid-template-columns: 1.3fr 1fr 1fr; }
 .awg.c3 span:nth-last-child(4) { border-bottom: 1px solid var(--line); }
+/* drill chart: two tight columns; tell the kinds apart at a glance */
+.drillhead { display: grid; grid-template-columns: 1fr 1fr; column-gap: 33px; font-size: 13px; color: var(--muted);
+  padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.drillhead > div, .drills > div { display: grid; grid-template-columns: 1fr 1fr; text-align: center; }
+/* a wide gap with a line down the middle keeps the two halves apart */
+.drills { column-count: 2; column-gap: 32px; column-rule: 1px solid var(--line); font-size: 14px; }
+.drills > div { padding: 3px 0; border-bottom: 1px solid var(--line); break-inside: avoid; }
+.drills span { font-weight: 500; }
+.drills .let { color: var(--accent-ink, var(--accent)); font-weight: 700; }
+.drills .frac { font-weight: 800; }
+.drills .mm { color: var(--muted); }
 .rows.masks { margin-top: 0; }
 .big-label { font-size: 16px; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
 .alt { color: var(--muted); font-size: 18px; margin-top: 2px; }
@@ -417,7 +442,7 @@ footer {
 .loghead h2 { margin: 0; font-size: 18px; }
 #logx { border: 1px solid var(--line); background: transparent; color: var(--text); border-radius: 8px;
   padding: 6px 12px; font-weight: 600; cursor: pointer; }
-.logv { margin: 14px 0 4px; font-size: 15px; color: var(--accent); }
+.logv { margin: 14px 0 4px; font-size: 15px; color: var(--accent-ink); }
 .logv small { color: var(--muted); font-weight: 600; margin-left: 6px; }
 .logsheet ul { margin: 0; padding-left: 20px; }
 .logsheet li { margin: 4px 0; line-height: 1.4; }
@@ -519,7 +544,7 @@ html.nozoom #app { touch-action: pan-y; }
 .pf > div { display: grid; grid-template-columns: 74px 1fr; column-gap: 10px; padding: 9px 0;
   border-bottom: 1px solid var(--line); text-align: left; }
 .pf > div:last-child { border-bottom: 0; }
-.pf b { color: var(--accent); font-size: 16px; grid-row: span 2; }
+.pf b { color: var(--accent-ink); font-size: 16px; grid-row: span 2; }
 .pf span { font-weight: 600; font-size: 16px; }
 .pf small { color: var(--muted); font-size: 14px; line-height: 1.3; }
 .wiring { width: 100%; height: auto; display: block; margin: 4px 0 6px; color: var(--text); fill: none;
@@ -528,9 +553,21 @@ html.nozoom #app { touch-action: pan-y; }
 .wiring text { fill: currentColor; stroke: none; font-size: 12px; font-weight: 600; }
 .wiring .term { fill: var(--card); }
 .wiring path.edge { stroke: var(--muted); stroke-width: 4.5; opacity: .5; }
-.wirekey { display: flex; justify-content: center; gap: 16px; margin-top: 8px; font-size: 14px; color: var(--muted); }
+.wirekey { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; color: var(--muted); }
+/* wire key in two labeled groups: the sensor's own leads, and the panel's power wiring */
+.keys { display: grid; gap: 8px; margin-top: 12px; }
+.keyrow { background: var(--card2, var(--field)); border-radius: 12px; padding: 8px 12px; text-align: left; }
+.keyrow b { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink, var(--accent));
+  margin-bottom: 4px; }
 .wirekey span::before { content: ""; display: inline-block; width: 16px; height: 3px; border-radius: 2px;
   background: var(--c); vertical-align: middle; margin-right: 6px; box-shadow: 0 0 0 1px var(--line); }
+.codes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.sechead.codehead { margin-top: 14px; }
+.codes > div { display: grid; grid-template-columns: 18px 1fr; align-items: center; column-gap: 6px; text-align: left;
+  background: var(--card2, var(--field)); border-radius: 10px; padding: 6px 8px; }
+.codes i { width: 18px; height: 18px; border-radius: 5px; grid-row: span 2; box-shadow: 0 0 0 1px var(--line); }
+.codes b { font-size: 14px; }
+.codes span { font-size: 11.5px; color: var(--muted); line-height: 1.2; }
 .secgap { height: 16px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
 .secnote { margin: 0 0 10px; font-size: 14px; color: var(--muted); text-align: center; }
 .sym.wide svg { max-width: 300px; }
@@ -577,11 +614,80 @@ html.nozoom #app { touch-action: pan-y; }
   z-index: 20;
 }
 #toast.show { opacity: 1; }
+
+/* ======== Design: graphite + safety yellow, big page titles, list-style fields,
+   floating bottom bar. These come last so they refine the base rules above. ======== */
+body { font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+
+/* ---- Header: big page title, group above it ---- */
+header { padding: calc(14px + env(safe-area-inset-top)) 18px 6px; align-items: flex-end; }
+header h1 { text-transform: none; letter-spacing: -.02em; font-size: 28px; font-weight: 800; line-height: 1.1; }
+/* small app name centered across the whole header, above the title and the theme button */
+header { position: relative; padding-top: calc(36px + env(safe-area-inset-top)); }
+header h1 .apptitle { position: absolute; left: 0; right: 0; top: calc(12px + env(safe-area-inset-top)); text-align: center;
+  font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+header h1 small { display: block; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink); margin-bottom: 2px; }
+#theme { border: 0; background: var(--card); color: var(--text); box-shadow: var(--shadow); }
+
+/* ---- Page tabs: underline style ---- */
+#pages { padding: 4px 10px 10px; }
+#pages .track { background: transparent; padding: 0; gap: 4px; border-bottom: 1px solid var(--line); border-radius: 0; }
+#pages button { color: var(--muted); opacity: 1; border-radius: 0; border-bottom: 3px solid transparent; min-height: 40px; }
+#pages button[aria-selected="true"] { background: transparent; color: var(--text); border-bottom-color: var(--accent); }
+
+/* ---- Cards: no outlines, soft shadow, rounder ---- */
+main { padding-top: 6px; }
+.card { border: 0; border-radius: 20px; box-shadow: var(--shadow); padding: 14px; }
+.card-top .pagetitle, .card > .pagetitle { display: none; } /* the page name is in the header now */
+.card-top { margin-bottom: 4px; }
+
+/* ---- Selectors: pill tracks, left-aligned small labels ---- */
+.seg-label { text-align: left; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 4px 4px 6px; }
+.seg { background: var(--card2); border: 0; border-radius: 999px; padding: 4px; }
+.seg button { border-radius: 999px; font-size: 15px; padding: 9px 6px; }
+.seg.many button { font-size: 13px; }
+
+/* ---- Fields as list rows: name on the left, value on the right ---- */
+label.field { display: grid; grid-template-columns: 1fr 55%; align-items: center; column-gap: 8px;
+  background: var(--card2); border-radius: 14px; padding: 4px 4px 4px 14px; margin-bottom: 8px; }
+label.field > span { text-align: left; margin: 0; font-size: 15px; }
+label.field .fielderr { grid-column: 1 / -1; text-align: left; margin: 2px 0 4px; }
+.inwrap input { background: var(--card); border: 0; border-radius: 11px; font-size: 20px; padding: 10px 44px 10px 10px; text-align: right; }
+.inwrap em { right: 10px; font-size: 13px; }
+.inwrap input.paste { text-align: center; padding: 10px; }
+/* Fields with - / + buttons keep the full width */
+label.field:has(.stepper) { grid-template-columns: 1fr; row-gap: 6px; padding: 10px; }
+label.field:has(.stepper) > span { padding-left: 4px; }
+.inwrap.stepper input { text-align: center; }
+.pm, .step { background: var(--card2); border: 0; }
+.inwrap .pm { width: 34px; height: 34px; left: 4px; }
+
+/* ---- Results: yellow answer ---- */
+.results { text-align: left; }
+.results h2 { font-size: 12px; letter-spacing: .1em; }
+.big { font-size: 48px; letter-spacing: -.03em; }
+.results .big { color: var(--accent-ink); }
+.results .big-label, .results .alt, .results .hint { text-align: left; }
+.about summary { font-size: 13px; letter-spacing: .1em; }
+.row { font-size: 16px; }
+
+/* ---- Floating bottom bar ---- */
+nav { left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom)); padding: 6px; border-radius: 24px;
+  background: var(--nav-bg); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border: 1px solid var(--line); box-shadow: var(--shadow); }
+nav button { height: 52px; color: var(--muted); opacity: 1; border-top: 0; border-radius: 18px; font-size: 11px; }
+nav button[aria-selected="true"] { background: var(--accent); color: var(--accent-text); }
+footer { padding-bottom: calc(var(--nav-h) + 40px + env(safe-area-inset-bottom)); }
+#upd { bottom: calc(var(--nav-h) + 26px + env(safe-area-inset-bottom)); border-radius: 18px; }
+
+/* ---- Symbols and tables follow the card style ---- */
+.sym, .wire { border: 0; background: var(--card2); border-radius: 14px; }
+.wire .pin { border-radius: 10px; }
 </style>
 </head>
 <body>
 <header>
-  <h1>Automation Tools</h1>
+  <h1 id="title">Automation Tools</h1>
   <button id="theme" type="button"></button>
 </header>
 <div id="pages" role="tablist"></div>
@@ -1057,12 +1163,42 @@ var WIRES = [
   { pin: 4, color: "Black", code: "BK", hex: "#111111", use: "Output 1 / NO output / IO-Link C/Q" },
   { pin: 5, color: "Gray", code: "GY", hex: "#9ca3af", use: "Varies by device: teach input, function input or not used" }
 ];
+// Wire color abbreviations as used on drawings and cable labels, with the IEC 60757 code
+// where it's different (the code printed on most European sensor cables)
+var CC = { BK: "#111111", BL: "#2563eb", BR: "#8b5a2b", CL: "#e5e7eb", GN: "#16a34a", GY: "#9ca3af", OR: "#f97316",
+  PR: "#7c3aed", RD: "#dc2626", WH: "#f8fafc", YL: "#facc15", PK: "#f472b6", TN: "#d2b48c", VI: "#8b5cf6" };
+var COLOR_SOLID = [
+  ["BK", "Black"], ["BL", "Blue", "BU"], ["BR", "Brown", "BN"], ["CL", "Clear"], ["GN", "Green"], ["GY", "Gray"],
+  ["OR", "Orange", "OG"], ["PR", "Purple", "VT"], ["RD", "Red"], ["WH", "White"], ["YL", "Yellow", "YE"],
+  ["PK", "Pink"], ["TN", "Tan"]
+];
+var COLOR_STRIPE = [
+  ["BK/WH", "Black / White"], ["BL/WH", "Blue / White"], ["BR/WH", "Brown / White"], ["CL/BK", "Clear / Black"],
+  ["CL/PR", "Clear / Purple"], ["GN/WH", "Green / White"], ["GN/YL", "Green / Yellow", "GNYE"],
+  ["OR/WH", "Orange / White"], ["PR/WH", "Purple / White"], ["RD/WH", "Red / White"], ["VI/WH", "Violet / White"],
+  ["YL/WH", "Yellow / White"], ["YL/GN", "Yellow / Green"], ["YL/BK", "Yellow / Black"]
+];
+function swatch(code) {
+  var p = code.split("/");
+  // a striped wire: main color with bands of the second color
+  return p.length > 1 ? "repeating-linear-gradient(135deg," + CC[p[0]] + " 0 5px," + CC[p[1]] + " 5px 8px)" : CC[code];
+}
+function codeGrid(list) {
+  return '<div class="codes">' + list.map(function (c) {
+    return '<div><i style="background:' + swatch(c[0]) + '"></i><b>' + c[0] + "</b><span>" + c[1] +
+      (c[2] ? " &middot; IEC " + c[2] : "") + "</span></div>";
+  }).join("") + "</div>";
+}
+function colorCodes() {
+  return '<h2 class="sechead">Solid</h2>' + codeGrid(COLOR_SOLID) +
+    '<h2 class="sechead codehead">Striped</h2>' + codeGrid(COLOR_STRIPE);
+}
 function renderWires() {
   var card = document.createElement("div");
   card.className = "card";
-  var k = S.c5.pins; // 4 or 5 (cable colors), "pnp" or "nonc"
-  if ([4, 5, "pnp", "nonc"].indexOf(k) < 0) k = S.c5.pins = 4;
-  card.appendChild(seg("Sensors", [[4, "4-Pin"], [5, "5-Pin"], ["pnp", "PNP / NPN"], ["nonc", "NO / NC"]], k, function (v) {
+  var k = S.c5.pins; // 4 or 5 (cable pinouts), "pnp", "nonc" or "codes" (wire color abbreviations)
+  if ([4, 5, "pnp", "nonc", "codes"].indexOf(k) < 0) k = S.c5.pins = 4;
+  card.appendChild(seg("Sensors", [[4, "4-Pin"], [5, "5-Pin"], ["pnp", "PNP/NPN"], ["nonc", "NO/NC"], ["codes", "Colors"]], k, function (v) {
     S.c5.pins = v; save(); render();
   }));
   var t;
@@ -1071,12 +1207,15 @@ function renderWires() {
       '<p class="secnote">Wire to a sinking input card: the card common goes to 0 V.</p>' + sensorDiagram(true) +
       '<div class="secgap"></div><h2 class="sechead">NPN (Sinking) Sensor</h2>' +
       '<p class="secnote">Wire to a sourcing input card: the card common goes to +24 V.</p>' + sensorDiagram(false) +
-      '<div class="wirekey"><span style="--c:#8b5a2b">Brown +V</span><span style="--c:#111111">Black Out</span>' +
-      '<span style="--c:#2563eb">Blue 0 V</span></div>' +
-      '<div class="wirekey"><span style="--c:#2563eb">Blue +24 V</span>' +
-      '<span style="--c:repeating-linear-gradient(90deg,#2563eb 0 4px,#f8fafc 4px 8px)">Blue/White 0 V</span></div>';
+      '<div class="keys"><div class="keyrow"><b>Sensor Cable</b><div class="wirekey">' +
+      '<span style="--c:#8b5a2b">Brown +V</span><span style="--c:#111111">Black Out</span>' +
+      '<span style="--c:#2563eb">Blue 0 V</span></div></div>' +
+      '<div class="keyrow"><b>Panel Power</b><div class="wirekey"><span style="--c:#2563eb">Blue +24 V</span>' +
+      '<span style="--c:repeating-linear-gradient(90deg,#2563eb 0 4px,#f8fafc 4px 8px)">Blue/White 0 V</span></div></div></div>';
   } else if (k === "nonc") {
     t = pfList(SENSOR_TEXT.nonc);
+  } else if (k === "codes") {
+    t = colorCodes();
   } else {
     t = '<div class="wires">';
     WIRES.slice(0, k).forEach(function (w) {
@@ -1095,7 +1234,10 @@ function renderWires() {
 
   var about = document.createElement("details");
   about.className = "card about";
-  about.innerHTML = "<summary>Notes</summary>" + (typeof k === "number" ?
+  about.innerHTML = "<summary>Notes</summary>" + (k === "codes" ?
+    "<p>Abbreviations as used on drawings and cable labels. European sensor cables often print the IEC 60757 " +
+    "code instead, shown after the name where it's different. A striped wire is named main color first, then the stripe.</p>" :
+    typeof k === "number" ?
     "<p>Standard colors for M8 and M12 sensor cables (IEC 60947-5-2). " +
     "3-wire sensors use pins 1, 3 and 4 only: brown +V, blue 0 V, black output.</p>" +
     "<p>On a PNP sensor the output switches to +V; on an NPN sensor it switches to 0 V.</p>" +
@@ -1261,30 +1403,63 @@ var TAPS = {
     ["7/8-14", "13/16", .8125], ["1-12", "59/64", .9219]],
   // metric: drill = size - pitch
   m: [["M2 x 0.4", 1.6], ["M2.5 x 0.45", 2.05], ["M3 x 0.5", 2.5], ["M4 x 0.7", 3.3], ["M5 x 0.8", 4.2],
-    ["M6 x 1", 5], ["M8 x 1.25", 6.8], ["M8 x 1 fine", 7], ["M10 x 1.5", 8.5], ["M10 x 1.25 fine", 8.8],
-    ["M12 x 1.75", 10.2], ["M12 x 1.5 fine", 10.5], ["M14 x 2", 12], ["M16 x 2", 14], ["M16 x 1.5 fine", 14.5],
+    ["M6 x 1", 5], ["M8 x 1.25", 6.8], ["M8 x 1", 7], ["M10 x 1.5", 8.5], ["M10 x 1.25", 8.8],
+    ["M12 x 1.75", 10.2], ["M12 x 1.5", 10.5], ["M14 x 2", 12], ["M16 x 2", 14], ["M16 x 1.5", 14.5],
     ["M20 x 2.5", 17.5], ["M24 x 3", 21]]
 };
+// ---- Drill chart: every common drill from 0 to 1 inch, in size order ----
+// Number drills #1-#60 and letter drills A-Z (inches)
+var NUM_DRILLS = [.2280, .2210, .2130, .2090, .2055, .2040, .2010, .1990, .1960, .1935, .1910, .1890, .1850, .1820,
+  .1800, .1770, .1730, .1695, .1660, .1610, .1590, .1570, .1540, .1520, .1495, .1470, .1440, .1405, .1360, .1285,
+  .1200, .1160, .1130, .1110, .1100, .1065, .1040, .1015, .0995, .0980, .0960, .0935, .0890, .0860, .0820, .0810,
+  .0785, .0760, .0730, .0700, .0670, .0635, .0595, .0550, .0520, .0465, .0430, .0420, .0410, .0400];
+var LETTER_DRILLS = [.234, .238, .242, .246, .250, .257, .261, .266, .272, .277, .281, .290, .295, .302, .316, .323,
+  .332, .339, .348, .358, .368, .377, .386, .397, .404, .413];
+var drillChart = null;
+function buildDrillChart() {
+  var rows = []; // [inches, name, kind]
+  NUM_DRILLS.forEach(function (d, i) { rows.push([d, "#" + (i + 1), "num"]); });
+  LETTER_DRILLS.forEach(function (d, i) { rows.push([d, String.fromCharCode(65 + i), "let"]); });
+  for (var n = 1; n <= 64; n++) { // 1/64 steps, shown in lowest terms
+    var a = n, b = 64;
+    while (a % 2 === 0) { a /= 2; b /= 2; }
+    rows.push([n / 64, b === 1 ? '1"' : a + "/" + b + '"', "frac"]);
+  }
+  for (var mm = 1; mm <= 25; mm += 0.5) rows.push([mm / MM, mm + " mm", "mm"]);
+  return rows.sort(function (x, y) { return x[0] - y[0]; });
+}
+// Two compact columns (read down the left, then the right): decimal and drill size
+function drillTable() {
+  drillChart = drillChart || buildDrillChart();
+  return '<div class="drillhead"><div><b>Decimal</b><b>Drill</b></div><div><b>Decimal</b><b>Drill</b></div></div><div class="drills">' +
+    drillChart.map(function (r) {
+      return '<div><span>' + r[0].toFixed(4).replace(/^0/, "") + '</span><span class="' + r[2] + '">' + r[1] + "</span></div>";
+    }).join("") + "</div>";
+}
 function renderTap() {
   var card = document.createElement("div");
   card.className = "card";
-  card.appendChild(seg("Thread", [["unc", "UNC"], ["unf", "UNF"], ["m", "Metric"]], S.c14.k, function (v) {
+  if (["unc", "unf", "m", "chart"].indexOf(S.c14.k) < 0) S.c14.k = "unc";
+  card.appendChild(seg("Thread", [["unc", "UNC"], ["unf", "UNF"], ["m", "Metric"], ["chart", "Drills"]], S.c14.k, function (v) {
     S.c14.k = v; save(); render();
   }));
   var metric = S.c14.k === "m";
   var t = '<div class="awg c3"><b>Thread</b><b>Drill</b><b>' + (metric ? "Inch" : "Decimal") + "</b>";
-  TAPS[S.c14.k].forEach(function (r) {
+  if (S.c14.k !== "chart") TAPS[S.c14.k].forEach(function (r) {
     if (metric) t += "<span>" + r[0] + "</span><span>" + r[1] + " mm</span><span>" + (r[1] / MM).toFixed(4).slice(1) + "</span>";
     else t += "<span>" + r[0] + "</span><span>" + r[1] + "</span><span>" + r[2].toFixed(4).slice(1) + "</span>";
   });
   var box = document.createElement("div");
   box.className = "swipebox"; // slides on its own when swiping between choices
-  box.innerHTML = t + "</div>";
+  box.innerHTML = S.c14.k === "chart" ? drillTable() : t + "</div>";
   card.appendChild(box);
   app.appendChild(card);
   var about = document.createElement("details");
   about.className = "card about";
-  about.innerHTML = "<summary>Notes</summary>" +
+  about.innerHTML = "<summary>Notes</summary>" + (S.c14.k === "chart" ?
+    "<p>Every number drill (#1&ndash;#60), letter drill (A&ndash;Z), fractional drill in 1/64ths and metric drill in " +
+    "0.5 mm steps up to 1 inch, in size order: read down the left column, then the right. Number drills are in " +
+    "plain text, letters in color, fractions bold and metric in gray.</p>" : "") +
     "<p>Drill sizes give about 75% thread, the usual choice for cut taps in steel and aluminum.</p>" +
     "<p>Form (roll) taps need a bigger drill; check the tap maker's chart.</p>" +
     "<p>Metric tap drill = thread size − pitch. For example M6 x 1: 6 − 1 = 5 mm.</p>";
@@ -1435,7 +1610,7 @@ var SENSOR_TEXT = {
 var GROUPS = {
   conv: [[1, "Conveyor PPM"], [2, "Sensor Timing"], [3, "Pack Gapping"], [6, "VFD"]],
   ctrl: [[7, "Analog"], [8, "Encoder"], [11, "IP/Subnet"], [16, "Motor FLA"]],
-  ref: [[5, "Sensors"], [9, "Symbols"], [12, "AWG"], [14, "Tap Drill"], [15, "PF525"]],
+  ref: [[5, "Wiring"], [12, "AWG"], [9, "Symbols"], [14, "Tap Drill"], [15, "PF525"]],
   robot: [[4, "Orientation"]]
 };
 function groupOf(t) {
@@ -1742,6 +1917,10 @@ function renderPage() {
   clearTimeout(histT);
   var grp = groupOf(S.tab);
   S.last[grp] = S.tab;
+  // Header: small app name, the group, then the open page in big type
+  var here = GROUPS[grp].find(function (x) { return x[0] === S.tab; });
+  document.getElementById("title").innerHTML = '<span class="apptitle">Automation Tools</span><small>' +
+    GROUP_NAMES[grp] + "</small>" + (here ? here[1] : "");
   document.querySelectorAll("nav button[data-group]").forEach(function (b) {
     b.setAttribute("aria-selected", String(b.dataset.group === grp));
   });
@@ -2328,12 +2507,13 @@ var swipe = null;
 // On Wires, Symbols and Tap Drill a swipe on the selector or the content under it steps through
 // the page's own choices (cable, symbol type, thread); a swipe anywhere else changes page
 var SWIPE_SUBS = {
-  5: ["c5", "pins", [4, 5, "pnp", "nonc"]],
+  5: ["c5", "pins", [4, 5, "pnp", "nonc", "codes"]],
   9: ["c9", "k", ["elec", "pneu", "hyd", "valves"]],
-  14: ["c14", "k", ["unc", "unf", "m"]],
+  14: ["c14", "k", ["unc", "unf", "m", "chart"]],
   15: ["c15", "k", ["par", "flt"]]
 };
 var GROUP_ORDER = ["conv", "ctrl", "ref", "robot"];
+var GROUP_NAMES = { conv: "Conveyor", ctrl: "Controls", ref: "Reference", robot: "Robot" };
 // Returns what a swipe one step left (+1) or right (-1) does, or null if there's nothing that way
 function pageAt(step, onSub, onNav) {
   if (onNav) {
