@@ -407,16 +407,16 @@ nav button[aria-selected="true"] { opacity: 1; color: var(--accent); border-top-
 #pages::-webkit-scrollbar { display: none; }
 #pages:empty { display: none; }
 #pages button {
-  flex: 1 0 auto;
+  flex: 1 1 0;
   border: 1px solid rgba(255,255,255,.2);
   background: transparent;
   color: var(--head-text);
-  border-radius: 999px;
-  padding: 8px 14px;
+  border-radius: 14px;
+  padding: 6px 4px;
   font-size: 15px;
+  line-height: 1.15;
   font-weight: 600;
   cursor: pointer;
-  white-space: nowrap;
 }
 #pages button[aria-selected="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 
@@ -556,7 +556,7 @@ var DEF = {
   c4: { m: "e2q", x: 0, y: 0, z: 0, q1: 1, q2: 0, q3: 0, q4: 0 },
   c5: { pins: 4 },
   c6: { u: "in", m: "fpm", rpm: 1750, hz0: 60, ratio: 20, D: 4, hz: 60, f: 100 },
-  c7: { t: "ma", m: "s2v", sl: 0, sh: 27648, el: 0, eh: 100, sig: 12, val: 50 },
+  c7: { t: "ma", m: "s2v", sl: 0, sh: 27648, ml: 4, mh: 20, vl: 0, vh: 10, el: 0, eh: 100, sig: 12, val: 50 },
   c8: { u: "in", x: 4, ppr: 1024, D: 4, dist: 12, f: 100 },
   hist: {},
   last: { conv: 1, ctrl: 7, ref: 5, robot: 4 }, // last page opened in each group
@@ -654,22 +654,29 @@ var FIELDS = {
 };
 
 // Analog scaling fields depend on the signal type
-var SIG = { ma: [4, 20, "mA", 3], v: [0, 10, "V", 3], raw: [null, null, "counts", 0] };
+// [low key, high key, unit, decimals shown, smallest and largest signal allowed]
+var SIG = { ma: ["ml", "mh", "mA", 3, 0, 20], v: ["vl", "vh", "V", 3, -10, 10], raw: ["sl", "sh", "counts", 0] };
 function analogFields() {
-  var a = S.c7, u = SIG[a.t][2], list = [];
+  var a = S.c7, g = SIG[a.t], u = g[2], list = [];
   if (a.t === "raw") {
-    list.push({ k: "sl", label: "Signal low (counts)", unit: "", neg: true, raw: true });
-    list.push({ k: "sh", label: "Signal high (counts)", unit: "", neg: true, raw: true });
+    list.push({ k: "sl", label: "Signal Low (counts)", unit: "", neg: true, raw: true });
+    list.push({ k: "sh", label: "Signal High (counts)", unit: "", neg: true, raw: true });
+  } else {
+    var nm = a.t === "ma" ? "Current" : "Voltage";
+    list.push({ k: g[0], label: "Low " + nm, unit: u, neg: g[4] < 0, raw: true, min: g[4], max: g[5] });
+    list.push({ k: g[1], label: "High " + nm, unit: u, neg: g[4] < 0, raw: true, min: g[4], max: g[5] });
   }
-  list.push({ k: "el", label: "Value at signal low", unit: "", neg: true, raw: true });
-  list.push({ k: "eh", label: "Value at signal high", unit: "", neg: true, raw: true });
-  if (a.m === "s2v") list.push({ k: "sig", label: "Signal reading", unit: u, neg: a.t === "raw", raw: true });
+  // name the actual end points, e.g. "Value at 4 mA"
+  var lo = a.t === "raw" ? "Signal Low" : a[g[0]] + " " + u, hi = a.t === "raw" ? "Signal High" : a[g[1]] + " " + u;
+  list.push({ k: "el", label: "Value at " + lo, unit: "", neg: true, raw: true });
+  list.push({ k: "eh", label: "Value at " + hi, unit: "", neg: true, raw: true });
+  if (a.m === "s2v") list.push({ k: "sig", label: "Signal Reading", unit: u, neg: a.t !== "ma", raw: true });
   else list.push({ k: "val", label: "Value", unit: "", neg: true, raw: true });
   return list;
 }
 function sigRange() {
   var a = S.c7;
-  return a.t === "raw" ? [a.sl, a.sh] : [SIG[a.t][0], SIG[a.t][1]];
+  return [a[SIG[a.t][0]], a[SIG[a.t][1]]];
 }
 
 function kOf(c) { return S[c].u === "mm" ? 1 / MM : 1; } // inches per unit
@@ -772,7 +779,8 @@ function fieldEl(c, f) {
   em.textContent = f.len ? S[c].u : f.unit;
   var msg = document.createElement("div");
   msg.className = "fielderr";
-  msg.textContent = f.neg ? "Enter a number" : "Enter a number of 0 or more";
+  msg.textContent = f.min !== undefined ? "Enter " + f.min + " to " + f.max :
+    f.neg ? "Enter a number" : "Enter a number of 0 or more";
   function mark(bad) {
     inp.classList.toggle("bad", bad);
     msg.classList.toggle("show", bad);
@@ -784,7 +792,7 @@ function fieldEl(c, f) {
   inp.addEventListener("input", function () {
     var t = inp.value.trim();
     var v = Number(t);
-    if (t === "" || !isFinite(v) || (v < 0 && !f.neg)) {
+    if (t === "" || !isFinite(v) || (v < 0 && !f.neg) || (f.min !== undefined && (v < f.min || v > f.max))) {
       invalid[c + f.k] = true;
       mark(true);
     } else {
@@ -998,7 +1006,6 @@ function parseIP(t) {
   if (!m || [1, 2, 3, 4].some(function (k) { return Number(m[k]) > 255; })) return null;
   return { u: ((Number(m[1]) << 24) | (Number(m[2]) << 16) | (Number(m[3]) << 8) | Number(m[4])) >>> 0 };
 }
-function row(k, v) { return '<div class="row"><span class="k">' + k + '</span><span class="v">' + v + "</span></div>"; }
 function subnetResult(n, ip) {
   if (n === null) return '<p class="err">Not a valid subnet mask</p>';
   var hosts = n >= 31 ? (n === 31 ? 2 : 1) : Math.pow(2, 32 - n) - 2;
@@ -1164,7 +1171,7 @@ function renderTap() {
 // Tools are grouped; the bottom bar picks the group, the strip under the
 // header picks the page within it
 var GROUPS = {
-  conv: [[1, "Speed"], [2, "Sensor"], [3, "Gap"], [6, "Drive"]],
+  conv: [[1, "Conveyor PPM"], [2, "Sensor Timing"], [3, "Pack Gapping"], [6, "VFD"]],
   ctrl: [[7, "Analog"], [8, "Encoder"], [11, "IP/Subnet"]],
   ref: [[5, "Wires"], [9, "Symbols"], [12, "AWG"], [14, "Tap drill"]],
   robot: [[4, "Orientation"]]
@@ -1472,7 +1479,7 @@ function render() {
     var b = document.createElement("button");
     b.type = "button";
     b.setAttribute("role", "tab");
-    b.textContent = pg[1];
+    b.innerHTML = pg[1].replace(" ", "<br>"); // two-word names go on two rows
     b.setAttribute("aria-selected", String(pg[0] === S.tab));
     b.onclick = function () { openTab(pg[0]); };
     pages.appendChild(b);
@@ -1510,7 +1517,7 @@ function render() {
     }));
   }
   if (S.tab === 3) {
-    card.appendChild(seg("Solve for", [["gap", "Gap"], ["spd", "Speed change"]], S.c3.m, function (v) {
+    card.appendChild(seg("Solve for", [["gap", "Gap"], ["spd", "Speed Change"]], S.c3.m, function (v) {
       S.c3.m = v; save(); render();
     }));
   }
@@ -1525,7 +1532,7 @@ function render() {
     }));
   }
   if (S.tab === 7) {
-    card.appendChild(seg("Signal", [["ma", "4–20 mA"], ["v", "0–10 V"], ["raw", "PLC counts"]], S.c7.t, function (v) {
+    card.appendChild(seg("Signal", [["ma", "Current"], ["v", "Voltage"], ["raw", "PLC Counts"]], S.c7.t, function (v) {
       S.c7.t = v;
       // A reading that doesn't fit the new signal type starts at mid-range
       var rg = sigRange(), lo = Math.min(rg[0], rg[1]), hi = Math.max(rg[0], rg[1]);
@@ -1767,10 +1774,8 @@ function renderResults() {
   } else if (S.tab === 2) {
     if (S.c2.f === 0) return stop();
     var t = ms(S.c2.L, S.c2.f), tg = ms(S.c2.g, S.c2.f);
-    var d2 = dual("c2", S.c2.L);
     h += big("Sensor block time", fmt(t, 1), "ms");
-    h += '<div class="rows">' + row("Gap time", fmt(tg, 1) + " ms") +
-      row("Length", d2[0], d2[1], d2[0]) + row("Speed", fmt(S.c2.f, 0) + " FPM") + "</div>";
+    h += '<div class="rows">' + row("Gap time", fmt(tg, 1) + " ms") + "</div>";
     sum = ["Block", fmt(t, 1) + " ms"];
   } else if (S.tab === 3) {
     var s = S.c3;
@@ -1817,6 +1822,11 @@ function renderResults() {
     }
   } else if (S.tab === 7) {
     var a7 = S.c7, rg = sigRange(), su = SIG[a7.t][2], sd = SIG[a7.t][3];
+    // keep "Value at 4 mA" labels in step with the low / high boxes
+    analogFields().forEach(function (f) {
+      var box = app.querySelector('input[data-k="' + f.k + '"]');
+      if (box) box.closest("label").querySelector("span").textContent = f.label;
+    });
     if (rg[1] === rg[0] || a7.eh === a7.el) return stop();
     var sig, val;
     if (a7.m === "s2v") {
@@ -1831,12 +1841,11 @@ function renderResults() {
       sum = ["Signal", plain(sig, sd) + " " + su];
     }
     var pct = (sig - rg[0]) / (rg[1] - rg[0]) * 100;
-    h += '<div class="rows">' + row("Percent of span", plain(pct, 1) + " %") +
-      (a7.m === "s2v" ? row("Signal", plain(sig, sd) + " " + su) : row("Value", plain(val, 3))) + "</div>";
+    h += '<div class="rows">' + row("Percent of span", plain(pct, 1) + " %") + "</div>";
     var lo = Math.min(rg[0], rg[1]), hi = Math.max(rg[0], rg[1]);
     if (sig < lo || sig > hi)
       h += '<div class="warnrow">Outside the ' + plain(rg[0], sd) + "–" + plain(rg[1], sd) + " " + su + " range" +
-        (a7.t === "ma" && sig < 3.8 ? ": check for a broken wire or failed sensor" : "") + "</div>";
+        (a7.t === "ma" && a7.ml >= 4 && sig < 3.8 ? ": check for a broken wire or failed sensor" : "") + "</div>";
   } else if (S.tab === 8) {
     var e8 = S.c8;
     if (e8.D === 0) return stop();
