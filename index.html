@@ -1,0 +1,1059 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Automation Calculators</title>
+<meta name="description" content="Conveyor speed, sensor block time, transfer gap and robot orientation calculator.">
+<meta name="theme-color" content="#1e293b">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root {
+  --bg: #f1f5f9;
+  --card: #ffffff;
+  --text: #0f172a;
+  --muted: #475569;
+  --line: #e2e8f0;
+  --field: #f8fafc;
+  --accent: #d97706;
+  --accent-text: #ffffff;
+  --head: #1e293b;
+  --head-text: #f8fafc;
+  --error: #b91c1c;
+  --nav-h: 64px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1120;
+    --card: #162032;
+    --text: #e2e8f0;
+    --muted: #cbd5e1;
+    --line: #334155;
+    --field: #0f192b;
+    --accent: #f59e0b;
+    --accent-text: #111827;
+    --head: #0f172a;
+    --head-text: #f8fafc;
+    --error: #f87171;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b1120;
+  --card: #162032;
+  --text: #e2e8f0;
+  --muted: #cbd5e1;
+  --line: #334155;
+  --field: #0f192b;
+  --accent: #f59e0b;
+  --accent-text: #111827;
+  --head: #0f172a;
+  --head-text: #f8fafc;
+  --error: #f87171;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+button { font: inherit; }
+
+/* ---- Header with theme switch ---- */
+header {
+  background: var(--head);
+  color: var(--head-text);
+  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+header h1 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+#theme {
+  border: 1px solid rgba(255,255,255,.25);
+  background: transparent;
+  color: var(--head-text);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ---- Result bar: shown whenever the main result is out of view. It sits
+   just above the tab bar, or just above the keypad while typing ---- */
+#bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 30;
+  box-shadow: 0 -4px 12px rgba(0,0,0,.25);
+  background: var(--accent);
+  color: var(--accent-text);
+  padding: 8px 16px;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 18px;
+}
+#bar small { font-size: 14px; font-weight: 600; opacity: .85; }
+#bar:not(.show) { display: none; }
+#bar.long { font-size: 15px; flex-wrap: wrap; text-align: center; }
+
+
+main {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 16px 16px 8px;
+}
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.card-top { display: flex; justify-content: flex-end; margin: -6px -6px 4px 0; }
+.reset {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+.seg-label { font-size: 16px; font-weight: 600; color: var(--text); margin: 0 0 6px; text-align: center; }
+.seg {
+  display: flex;
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 3px;
+  margin-bottom: 14px;
+}
+.seg button {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 600;
+  padding: 11px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
+label.field { display: block; margin-bottom: 12px; }
+label.field > span { display: block; font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; text-align: center; }
+.inwrap { position: relative; }
+.inwrap input {
+  width: 100%;
+  font: inherit;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 52px;
+  text-align: center;
+}
+.inwrap input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.inwrap input.bad { border: 2px solid var(--error); outline-color: var(--error); }
+.fielderr { display: none; color: var(--error); font-size: 14px; font-weight: 600; text-align: center; margin-top: 4px; }
+.fielderr.show { display: block; }
+.inwrap em {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-style: normal;
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.inwrap input.paste { font-size: 18px; padding-left: 12px; padding-right: 12px; }
+.pm {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ---- Results ---- */
+.results { text-align: center; }
+.results h2, .about summary {
+  margin: 0 0 10px;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+}
+.big { font-size: 44px; font-weight: 700; line-height: 1.1; }
+.big small { font-size: 22px; font-weight: 600; color: var(--muted); }
+.big-label { font-size: 16px; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
+.alt { color: var(--muted); font-size: 18px; margin-top: 2px; }
+.tap { cursor: pointer; border-radius: 8px; }
+.tap:active { background: var(--field); }
+.hint { font-size: 13px; color: var(--muted); margin-top: 10px; }
+.rows { margin-top: 14px; border-top: 1px solid var(--line); text-align: left; }
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  font-size: 17px;
+  border-bottom: 1px solid var(--line);
+}
+.row:last-child { border-bottom: 0; }
+.row .k { color: var(--muted); }
+.row .v { text-align: right; font-weight: 600; }
+.row .v div { font-weight: 400; color: var(--muted); font-size: 16px; }
+.err { color: var(--error); font-weight: 600; }
+.grid { display: grid; gap: 8px; margin-top: 6px; }
+.grid.g4 { grid-template-columns: 1fr 1fr; }
+.grid.g3 { grid-template-columns: 1fr 1fr 1fr; }
+.cell {
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 6px;
+}
+.cell b { display: block; font-size: 14px; color: var(--muted); }
+.cell span { font-size: 20px; font-weight: 700; word-break: break-all; }
+.copy {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 17px;
+  font-weight: 700;
+  padding: 12px;
+  cursor: pointer;
+}
+.copy.alt2 { background: transparent; color: var(--text); border: 1px solid var(--line); }
+
+/* ---- Collapsible "How it works" ---- */
+.about summary { cursor: pointer; text-align: center; list-style: none; margin: 0; }
+.about summary::-webkit-details-marker { display: none; }
+.about summary::after { content: " \25BE"; }
+.about[open] summary { margin-bottom: 10px; }
+.about[open] summary::after { content: " \25B4"; }
+.about p { margin: 0 0 10px; font-size: 16px; line-height: 1.5; }
+.about p:last-child { margin-bottom: 0; }
+.about .formula {
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-weight: 600;
+  text-align: center;
+}
+
+#ver {
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  opacity: .6;
+  padding: 0 16px calc(var(--nav-h) + 16px + env(safe-area-inset-bottom));
+}
+
+/* ---- Bottom tab bar ---- */
+nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  background: var(--head);
+  border-top: 1px solid rgba(255,255,255,.08);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+nav button {
+  flex: 1;
+  height: var(--nav-h);
+  border: 0;
+  background: transparent;
+  color: var(--head-text);
+  opacity: .7;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  border-top: 3px solid transparent;
+}
+nav button svg { width: 24px; height: 24px; }
+/* Hide the tab bar while the keypad is open so it can't pop up over it */
+body.typing nav { display: none; }
+/* Extra room at the bottom while typing so even the last box can be
+   scrolled up above the keypad */
+body.typing main { padding-bottom: 60vh; }
+nav button[aria-selected="true"] { opacity: 1; color: var(--accent); border-top-color: var(--accent); }
+
+/* ---- Small "Copied" message ---- */
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--nav-h) + 16px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  background: var(--text);
+  color: var(--bg);
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 15px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+  z-index: 20;
+}
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Automation Calculators</h1>
+  <button id="theme" type="button"></button>
+</header>
+<div id="bar"></div>
+<main id="app"></main>
+<footer id="ver"></footer>
+<nav role="tablist">
+  <button role="tab" data-tab="1">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14l4-4"/><path d="M3.3 16a9 9 0 1 1 17.4 0"/></svg>
+    Speed</button>
+  <button role="tab" data-tab="2">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M10 2h4"/></svg>
+    Sensor</button>
+  <button role="tab" data-tab="3">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="6" height="8" rx="1"/><rect x="16" y="8" width="6" height="8" rx="1"/><path d="M10 12h4"/><path d="M12 10l2 2-2 2"/></svg>
+    Gap</button>
+  <button role="tab" data-tab="4">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h8"/><path d="M8 20v-5"/><circle cx="8" cy="13" r="2"/><path d="M9.5 11.5l5-5"/><circle cx="16" cy="5" r="2"/><path d="M17.5 6.5l2.5 2.5"/></svg>
+    Robot</button>
+</nav>
+<div id="toast"></div>
+<script src="version.js"></script>
+
+<script>
+// ---- Rounding (conveyor tabs: half rounds up, like the TI version) ----
+function fmt(x, d) {
+  var m = Math.abs(x) * Math.pow(10, d);
+  // Tiny nudge so values like 6.645 (stored as 6.64499...) round up
+  var n = Math.floor(m + 0.5 + m * 1e-12);
+  var s = String(n);
+  if (d) {
+    while (s.length < d + 1) s = "0" + s;
+    s = s.slice(0, -d) + "." + s.slice(-d);
+  }
+  if (x < 0 && n) s = "-" + s;
+  return s;
+}
+function rnd(x, d) { return parseFloat(fmt(x, d)); }
+// Robot tab only: plain JavaScript rounding to d places with trailing
+// zeros dropped (0.022260 -> 0.02226), like quat2euler.com.
+function plain(x, d) {
+  var s = String(parseFloat(x.toFixed(d)));
+  return s === "-0" ? "0" : s;
+}
+
+var MM = 25.4;
+// Defaults match the TI program. Lengths are stored in inches.
+var DEF = {
+  tab: 1,
+  theme: "auto",
+  c1: { u: "in", m: "spd", L: 12, g: 0, r: 100, f: 100 },
+  c2: { u: "in", L: 12, g: 0, f: 100 },
+  c3: { u: "in", m: "gap", L: 12, gA: 0, a: 50, b: 100, gw: 12, adj: "B" },
+  c4: { m: "e2q", x: 0, y: 0, z: 0, q1: 1, q2: 0, q3: 0, q4: 0 }
+};
+var KEY = "convcalc-v1";
+var S = JSON.parse(JSON.stringify(DEF));
+try {
+  var saved = JSON.parse(localStorage.getItem(KEY) || "null");
+  if (saved) {
+    ["c1", "c2", "c3", "c4"].forEach(function (c) {
+      if (saved[c]) for (var k in S[c]) if (k in saved[c]) S[c][k] = saved[c][k];
+    });
+    if (saved.tab) S.tab = saved.tab;
+    if (saved.theme) S.theme = saved.theme;
+  }
+} catch (e) {}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+}
+
+// ---- Field definitions per calculator ----
+// len: length (stored in inches, shown in chosen unit, 2 decimals)
+// neg: negatives allowed; raw: kept exactly as typed (no rounding)
+var FIELDS = {
+  c1spd: [
+    { k: "L", label: "Product length", len: true },
+    { k: "g", label: "Gap", len: true },
+    { k: "r", label: "Parts/min", d: 0, unit: "ppm" }
+  ],
+  c1rate: [
+    { k: "L", label: "Product length", len: true },
+    { k: "g", label: "Gap", len: true },
+    { k: "f", label: "Speed", d: 0, unit: "FPM" }
+  ],
+  c2: [
+    { k: "L", label: "Product length", len: true },
+    { k: "g", label: "Gap between products", len: true },
+    { k: "f", label: "Speed", d: 0, unit: "FPM" }
+  ],
+  c3gap: [
+    { k: "L", label: "Product length", len: true },
+    { k: "gA", label: "Gap on A", len: true },
+    { k: "a", label: "Speed A", d: 0, unit: "FPM" },
+    { k: "b", label: "Speed B", d: 0, unit: "FPM" }
+  ],
+  c3spdA: [
+    { k: "L", label: "Product length", len: true },
+    { k: "gA", label: "Gap A Current", len: true },
+    { k: "gw", label: "Gap B Desired", len: true },
+    { k: "b", label: "Speed B (current)", d: 0, unit: "FPM" }
+  ],
+  c3spdB: [
+    { k: "L", label: "Product length", len: true },
+    { k: "gA", label: "Gap A Current", len: true },
+    { k: "gw", label: "Gap B Desired", len: true },
+    { k: "a", label: "Speed A (current)", d: 0, unit: "FPM" }
+  ],
+  c4e: [
+    { k: "x", label: "X angle", unit: "°", neg: true, raw: true },
+    { k: "y", label: "Y angle", unit: "°", neg: true, raw: true },
+    { k: "z", label: "Z angle", unit: "°", neg: true, raw: true }
+  ],
+  c4q: [
+    { k: "q1", label: "q1", unit: "", neg: true, raw: true },
+    { k: "q2", label: "q2", unit: "", neg: true, raw: true },
+    { k: "q3", label: "q3", unit: "", neg: true, raw: true },
+    { k: "q4", label: "q4", unit: "", neg: true, raw: true }
+  ]
+};
+
+function kOf(c) { return S[c].u === "mm" ? 1 / MM : 1; } // inches per unit
+function shown(c, f) {
+  var v = S[c][f.k];
+  if (f.raw) return String(v);
+  return f.len ? fmt(v / kOf(c), 2) : fmt(v, f.d);
+}
+function qText() {
+  return "[" + [S.c4.q1, S.c4.q2, S.c4.q3, S.c4.q4].map(String).join(", ") + "]";
+}
+
+var app = document.getElementById("app");
+var bar = document.getElementById("bar");
+var invalid = {};
+
+// ---- Theme switch: Auto -> Light -> Dark ----
+var themeBtn = document.getElementById("theme");
+function applyTheme() {
+  if (S.theme === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", S.theme);
+  themeBtn.textContent = { auto: "◐ Auto", light: "☀ Light", dark: "☾ Dark" }[S.theme];
+  themeBtn.setAttribute("aria-label", "Theme: " + S.theme + ". Tap to change.");
+}
+themeBtn.onclick = function () {
+  S.theme = { auto: "light", light: "dark", dark: "auto" }[S.theme];
+  save();
+  applyTheme();
+};
+
+// ---- Small "Copied" message ----
+var toastEl = document.getElementById("toast"), toastT;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastT);
+  toastT = setTimeout(function () { toastEl.classList.remove("show"); }, 1400);
+}
+function copyText(text, msg) {
+  function done() { toast(msg || "Copied " + text); }
+  function fallback() {
+    var t = document.createElement("textarea");
+    t.value = text;
+    document.body.appendChild(t);
+    t.select();
+    try { document.execCommand("copy"); done(); } catch (e) {}
+    document.body.removeChild(t);
+  }
+  try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+}
+
+function seg(label, opts, cur, onPick) {
+  var w = document.createElement("div");
+  if (label) {
+    var p = document.createElement("p");
+    p.className = "seg-label";
+    p.textContent = label;
+    w.appendChild(p);
+  }
+  var s = document.createElement("div");
+  s.className = "seg";
+  opts.forEach(function (o) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.textContent = o[1];
+    b.setAttribute("aria-pressed", o[0] === cur ? "true" : "false");
+    b.onclick = function () { onPick(o[0]); };
+    s.appendChild(b);
+  });
+  w.appendChild(s);
+  return w;
+}
+
+// Enter on the keypad moves to the next box (the last one closes the keypad)
+function nextBox(inp) {
+  var all = Array.prototype.slice.call(app.querySelectorAll(".card input"));
+  var i = all.indexOf(inp);
+  if (i >= 0 && i < all.length - 1) all[i + 1].focus();
+  else inp.blur();
+}
+
+function fieldEl(c, f) {
+  var lab = document.createElement("label");
+  lab.className = "field";
+  var sp = document.createElement("span");
+  sp.textContent = f.label;
+  var wrap = document.createElement("div");
+  wrap.className = "inwrap";
+  var inp = document.createElement("input");
+  inp.type = "text";
+  inp.inputMode = "decimal";
+  inp.enterKeyHint = "next";
+  inp.autocomplete = "off";
+  inp.dataset.k = f.k;
+  inp.value = shown(c, f);
+  var em = document.createElement("em");
+  em.textContent = f.len ? S[c].u : f.unit;
+  var msg = document.createElement("div");
+  msg.className = "fielderr";
+  msg.textContent = f.neg ? "Enter a number" : "Enter a number of 0 or more";
+  function mark(bad) {
+    inp.classList.toggle("bad", bad);
+    msg.classList.toggle("show", bad);
+  }
+  inp.addEventListener("focus", function () { inp.select(); });
+  inp.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); nextBox(inp); }
+  });
+  inp.addEventListener("input", function () {
+    var t = inp.value.trim();
+    var v = Number(t);
+    if (t === "" || !isFinite(v) || (v < 0 && !f.neg)) {
+      invalid[c + f.k] = true;
+      mark(true);
+    } else {
+      delete invalid[c + f.k];
+      mark(false);
+      // Conveyor tabs round entries to the shown decimals first (like the TI)
+      S[c][f.k] = f.raw ? v : f.len ? rnd(v, 2) * kOf(c) : rnd(v, f.d);
+      save();
+      var pb = document.getElementById("qpaste");
+      if (pb && pb !== document.activeElement) pb.value = qText();
+    }
+    renderResults();
+  });
+  inp.addEventListener("blur", function () {
+    delete invalid[c + f.k];
+    mark(false);
+    inp.value = shown(c, f);
+    renderResults();
+  });
+  wrap.appendChild(inp);
+  wrap.appendChild(em);
+  if (f.neg) {
+    // Some number pads have no minus key, so give negatives a button
+    var pm = document.createElement("button");
+    pm.type = "button";
+    pm.className = "pm";
+    pm.textContent = "±";
+    pm.setAttribute("aria-label", "Make " + f.label + " negative or positive");
+    pm.addEventListener("mousedown", function (e) { e.preventDefault(); });
+    pm.onclick = function () {
+      var t = inp.value.trim();
+      inp.value = t.charAt(0) === "-" ? t.slice(1) : "-" + t;
+      inp.dispatchEvent(new Event("input"));
+      if (document.activeElement !== inp) inp.value = shown(c, f);
+    };
+    wrap.appendChild(pm);
+  }
+  lab.appendChild(sp);
+  lab.appendChild(wrap);
+  lab.appendChild(msg);
+  return lab;
+}
+
+// One box to paste a whole quaternion, e.g. [0.707107, 0, 0, 0.707107]
+function pasteEl() {
+  var lab = document.createElement("label");
+  lab.className = "field";
+  lab.innerHTML = "<span>Paste quaternion [q1, q2, q3, q4]</span>";
+  var wrap = document.createElement("div");
+  wrap.className = "inwrap";
+  var inp = document.createElement("input");
+  inp.type = "text";
+  inp.id = "qpaste";
+  inp.autocomplete = "off";
+  inp.enterKeyHint = "next";
+  inp.className = "paste";
+  inp.value = qText();
+  var msg = document.createElement("div");
+  msg.className = "fielderr";
+  msg.textContent = "Paste 4 numbers, like [1, 0, 0, 0]";
+  inp.addEventListener("focus", function () { inp.select(); });
+  inp.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); nextBox(inp); }
+  });
+  inp.addEventListener("input", function () {
+    var n = inp.value.match(/-?\d*\.?\d+(?:e-?\d+)?/gi);
+    var bad = !n || n.length !== 4;
+    inp.classList.toggle("bad", bad);
+    msg.classList.toggle("show", bad);
+    if (bad) { invalid.qpaste = true; renderResults(); return; }
+    delete invalid.qpaste;
+    ["q1", "q2", "q3", "q4"].forEach(function (k, i) {
+      S.c4[k] = Number(n[i]);
+      var box = app.querySelector('input[data-k="' + k + '"]');
+      if (box) box.value = String(S.c4[k]);
+      delete invalid["c4" + k];
+    });
+    save();
+    renderResults();
+  });
+  inp.addEventListener("blur", function () {
+    delete invalid.qpaste;
+    inp.classList.remove("bad");
+    msg.classList.remove("show");
+    inp.value = qText();
+    renderResults();
+  });
+  wrap.appendChild(inp);
+  lab.appendChild(wrap);
+  lab.appendChild(msg);
+  return lab;
+}
+
+// ABB convention (RAPID OrientZYX / EulerZYX): rotate about Z, then Y, then X.
+// q1 is the scalar part. Matches quat2euler.com.
+function eulerToQuat(xd, yd, zd) {
+  var r = Math.PI / 360; // degrees -> half-angle radians
+  var cx = Math.cos(xd * r), sx = Math.sin(xd * r);
+  var cy = Math.cos(yd * r), sy = Math.sin(yd * r);
+  var cz = Math.cos(zd * r), sz = Math.sin(zd * r);
+  return [
+    cz * cy * cx + sz * sy * sx,
+    cz * cy * sx - sz * sy * cx,
+    cz * sy * cx + sz * cy * sx,
+    sz * cy * cx - cz * sy * sx
+  ];
+}
+function quatToEuler(q) {
+  var w = q[0], x = q[1], y = q[2], z = q[3], d = 180 / Math.PI;
+  var s = Math.max(-1, Math.min(1, 2 * (w * y - z * x)));
+  return [
+    Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y)) * d,
+    Math.asin(s) * d,
+    Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z)) * d
+  ];
+}
+
+var resultsBox;
+
+function render() {
+  invalid = {};
+  document.querySelectorAll("nav button").forEach(function (b) {
+    b.setAttribute("aria-selected", String(+b.dataset.tab === S.tab));
+  });
+  app.innerHTML = "";
+  var c = "c" + S.tab;
+  var card = document.createElement("div");
+  card.className = "card";
+
+  // Reset this calculator back to its starting values
+  var top = document.createElement("div");
+  top.className = "card-top";
+  var rb = document.createElement("button");
+  rb.type = "button";
+  rb.className = "reset";
+  rb.textContent = "Reset";
+  rb.onclick = function () {
+    S[c] = JSON.parse(JSON.stringify(DEF[c]));
+    save();
+    render();
+    toast("Reset to defaults");
+  };
+  top.appendChild(rb);
+  card.appendChild(top);
+
+  if (S.tab === 1) {
+    card.appendChild(seg("Find", [["spd", "Speed"], ["rate", "Rate"]], S.c1.m, function (v) {
+      S.c1.m = v; save(); render();
+    }));
+  }
+  if (S.tab === 3) {
+    card.appendChild(seg("Solve for", [["gap", "Gap"], ["spd", "Speed change"]], S.c3.m, function (v) {
+      S.c3.m = v; save(); render();
+    }));
+  }
+  if (S.tab === 4) {
+    card.appendChild(seg("Convert", [["e2q", "Angles → Quaternion"], ["q2e", "Quaternion → Angles"]], S.c4.m, function (v) {
+      S.c4.m = v; save(); render();
+    }));
+  } else {
+    card.appendChild(seg("Length units", [["in", "inches"], ["mm", "mm"]], S[c].u, function (v) {
+      S[c].u = v; save(); render();
+    }));
+  }
+  if (S.tab === 4 && S.c4.m === "q2e") card.appendChild(pasteEl());
+
+  var list;
+  if (S.tab === 1) list = S.c1.m === "spd" ? FIELDS.c1spd : FIELDS.c1rate;
+  else if (S.tab === 2) list = FIELDS.c2;
+  else if (S.tab === 3) {
+    if (S.c3.m === "gap") list = FIELDS.c3gap;
+    else list = S.c3.adj === "A" ? FIELDS.c3spdA : FIELDS.c3spdB;
+  } else list = S.c4.m === "e2q" ? FIELDS.c4e : FIELDS.c4q;
+
+  list.forEach(function (f, i) {
+    card.appendChild(fieldEl(c, f));
+    // In speed change mode, the A/B choice goes before the speed field
+    if (S.tab === 3 && S.c3.m === "spd" && i === 2) {
+      card.appendChild(seg("Adjust speed of", [["A", "A"], ["B", "B"]], S.c3.adj, function (v) {
+        S.c3.adj = v; save(); render();
+      }));
+    }
+  });
+  // The last box shows "Done" instead of "Next" on the keypad
+  var boxes = card.querySelectorAll("input");
+  if (boxes.length) boxes[boxes.length - 1].enterKeyHint = "done";
+  app.appendChild(card);
+
+  resultsBox = document.createElement("div");
+  resultsBox.className = "card results";
+  app.appendChild(resultsBox);
+  renderResults();
+
+  var about = document.createElement("details");
+  about.className = "card about";
+  about.open = true;
+  about.innerHTML = "<summary>How it works</summary>" + describe();
+  app.appendChild(about);
+}
+
+// Plain-language description of the open calculator
+function describe() {
+  function p(t) { return "<p>" + t + "</p>"; }
+  function fm(t) { return '<p class="formula">' + t + "</p>"; }
+  if (S.tab === 1) {
+    if (S.c1.m === "rate") {
+      return p("Finds how many parts per minute a conveyor carries at a set speed. " +
+          "Each part takes up its own length plus the gap behind it.") +
+        fm("Parts/min = FPM &times; 12 &divide; (length + gap in inches)") +
+        p("This is the most the conveyor can carry at that spacing.");
+    }
+    return p("Finds the conveyor speed needed to carry a set number of parts per minute. " +
+        "Each part takes up its own length plus the gap behind it.") +
+      fm("FPM = parts/min &times; (length + gap in inches) &divide; 12") +
+      p("The speed is rounded to a whole FPM, and m/min is converted from that rounded speed.");
+  }
+  if (S.tab === 2) {
+    return p("Finds how long a product blocks a photo-eye or other sensor as it passes " +
+        "at a set speed, and how long the sensor sees the gap before the next product. " +
+        "Useful for PLC timers and sensor settings.") +
+      fm("Block time (ms) = length (ft) &divide; FPM &times; 60,000") +
+      fm("Gap time (ms) = gap (ft) &divide; FPM &times; 60,000");
+  }
+  if (S.tab === 4) {
+    return p("Converts between X, Y, Z angles in degrees and the quaternion [q1, q2, q3, q4] " +
+        "used by ABB robot orient data. q1 is the scalar part, and [1, 0, 0, 0] means no rotation.") +
+      p("Angles follow ABB's Z-Y-X order, the same as RAPID's OrientZYX and EulerZYX: " +
+        "rotate about Z, then Y, then X. Results match quat2euler.com.") +
+      fm("q = Rz(Z) &times; Ry(Y) &times; Rx(X)") +
+      p("Quaternions you enter are normalized first, so q1&sup2; + q2&sup2; + q3&sup2; + q4&sup2; = 1. " +
+        "Values are shown to 6 decimal places. Note that OrientZYX takes the angles as Z, Y, X.");
+  }
+  if (S.c3.m === "gap") {
+    return p("Finds the gap you get when product moves from conveyor A onto conveyor B " +
+        "running at a different speed. The time between products stays the same, " +
+        "so the spacing stretches (or shrinks) by B &divide; A.") +
+      fm("Gap on B = (length + gap on A) &times; B &divide; A &minus; length") +
+      p("A negative gap means products would collide or back up on B.");
+  }
+  return p("Finds the speed to run one conveyor so the gap on B becomes the gap you want. " +
+      "Choose which conveyor to adjust, then enter the current speed of the other one.") +
+    fm("Factor = (length + desired gap B) &divide; (length + current gap A)") +
+    fm("Adjust B: B = A &times; factor &nbsp;&middot;&nbsp; Adjust A: A = B &divide; factor") +
+    p("Assumes products leave A with the gap you entered and take on B's speed " +
+      "as soon as they reach it.");
+}
+
+// Dual-unit text: chosen unit first, other in brackets
+function dual(c, x) {
+  var a = fmt(x, 2) + " in", b = fmt(x * MM, 2) + " mm";
+  if (S[c].u === "mm") { var t = a; a = b; b = t; }
+  return [a, "[" + b + "]"];
+}
+function esc(t) { return String(t).replace(/"/g, "&quot;"); }
+// Tap any result to copy it
+function row(k, v, sub, copy) {
+  return '<div class="row"><span class="k">' + k + '</span><span class="v tap" data-copy="' +
+    esc(copy || v) + '">' + v + (sub ? "<div>" + sub + "</div>" : "") + "</span></div>";
+}
+function big(label, val, unit, alt) {
+  return '<div class="big-label">' + label + '</div><div class="big tap" data-copy="' +
+    esc(val + " " + unit) + '">' + val + " <small>" + unit + "</small></div>" +
+    (alt ? '<div class="alt tap" data-copy="' + esc(alt) + '">' + alt + "</div>" : "");
+}
+function ms(lenIn, fpm) { return lenIn / 12 / fpm * 60000; }
+
+function renderResults() {
+  var h = "<h2>Results</h2>";
+  var sum = null; // [label, value] for the slim bar
+  if (Object.keys(invalid).length) {
+    resultsBox.innerHTML = h + '<p class="err">Fix the highlighted box.</p>';
+    setBar(["Results", "Fix the highlighted box"]);
+    return;
+  }
+  var div0 = '<p class="err">Can\'t divide by 0 &mdash; check your entries.</p>';
+  function stop() { resultsBox.innerHTML = h + div0; setBar(["Results", "Can't divide by 0"]); }
+  var copies = []; // [button text, text to copy]
+
+  if (S.tab === 1) {
+    var p = S.c1.L + S.c1.g;
+    if (S.c1.m === "spd") {
+      var f = rnd(S.c1.r * p / 12, 0);
+      h += big("Speed", fmt(f, 0), "FPM", fmt(f * 0.3048, 1) + " m/min");
+      sum = ["Speed", fmt(f, 0) + " FPM"];
+    } else {
+      if (p === 0) return stop();
+      var r = S.c1.f * 12 / p;
+      h += big("Rate", fmt(r, 1), "parts/min");
+      sum = ["Rate", fmt(r, 1) + " ppm"];
+    }
+  } else if (S.tab === 2) {
+    if (S.c2.f === 0) return stop();
+    var t = ms(S.c2.L, S.c2.f), tg = ms(S.c2.g, S.c2.f);
+    var d2 = dual("c2", S.c2.L);
+    h += big("Sensor block time", fmt(t, 1), "ms");
+    h += '<div class="rows">' + row("Gap time", fmt(tg, 1) + " ms") +
+      row("Length", d2[0], d2[1], d2[0]) + row("Speed", fmt(S.c2.f, 0) + " FPM") + "</div>";
+    sum = ["Block", fmt(t, 1) + " ms"];
+  } else if (S.tab === 3) {
+    var s = S.c3;
+    if (s.m === "gap") {
+      // gap B = (len + gap A) x B/A - len
+      if (s.a === 0) return stop();
+      var n = (s.L + s.gA) * s.b / s.a - s.L;
+      var g1 = dual("c3", n), g2 = dual("c3", n - s.gA);
+      h += big("Gap on B", g1[0].split(" ")[0], g1[0].split(" ")[1], g1[1]);
+      h += '<div class="rows">' + row("Added", g2[0], g2[1], g2[0]) +
+        row("Ratio (B/A)", fmt(s.b / s.a, 3)) + "</div>";
+      sum = ["Gap on B", g1[0]];
+    } else {
+      // factor = (len + gap B desired) / (len + gap A); B = A x f, A = B / f
+      if (s.L + s.gA === 0 || s.L + s.gw === 0) return stop();
+      var F = (s.L + s.gw) / (s.L + s.gA);
+      var v = s.adj === "B" ? s.a * F : s.b / F;
+      var g3 = dual("c3", s.gw - s.gA);
+      h += big("Set speed " + s.adj + " to", fmt(v, 0), "FPM");
+      h += '<div class="rows">' + row("Added", g3[0], g3[1], g3[0]) +
+        row("Factor (B/A)", fmt(F, 4)) + "</div>";
+      sum = ["Set " + s.adj + " to", fmt(v, 0) + " FPM"];
+    }
+  } else {
+    var c4 = S.c4;
+    if (c4.m === "e2q") {
+      var q = eulerToQuat(c4.x, c4.y, c4.z).map(function (x) { return plain(x, 6); });
+      h += '<div class="big-label">Quaternion</div><div class="grid g4">' +
+        q.map(function (x, i) {
+          return '<div class="cell tap" data-copy="' + x + '"><b>q' + (i + 1) + "</b><span>" + x + "</span></div>";
+        }).join("") + "</div>";
+      copies.push(["Copy [q1,q2,q3,q4]", "[" + q.join(",") + "]"]);
+      copies.push(["Copy OrientZYX(Z,Y,X)", "OrientZYX(" + [c4.z, c4.y, c4.x].join(",") + ")"]);
+      sum = ["Quaternion", "[" + q.join(", ") + "]"];
+    } else {
+      var raw = [c4.q1, c4.q2, c4.q3, c4.q4];
+      var len = Math.sqrt(raw.reduce(function (a, x) { return a + x * x; }, 0));
+      if (len === 0) {
+        resultsBox.innerHTML = h + '<p class="err">A quaternion can\'t be all zeros.</p>';
+        setBar(["Results", "Quaternion can't be all zeros"]);
+        return;
+      }
+      var qn = raw.map(function (x) { return x / len; });
+      var e = quatToEuler(qn).map(function (x) { return plain(x, 6); });
+      h += '<div class="big-label">Euler angles</div><div class="grid g3">' +
+        ["X", "Y", "Z"].map(function (a, i) {
+          return '<div class="cell tap" data-copy="' + e[i] + '"><b>' + a + "</b><span>" + e[i] + "&deg;</span></div>";
+        }).join("") + "</div>";
+      h += '<div class="rows">' + row("Normalized",
+        "[" + qn.map(function (x) { return plain(x, 6); }).join(", ") + "]") + "</div>";
+      copies.push(["Copy [X,Y,Z]", "[" + e.join(",") + "]"]);
+      copies.push(["Copy OrientZYX(Z,Y,X)", "OrientZYX(" + [e[2], e[1], e[0]].join(",") + ")"]);
+      sum = ["X Y Z", e.join("°  ") + "°"];
+    }
+  }
+  copies.forEach(function (cp, i) {
+    h += '<button type="button" class="copy' + (i ? " alt2" : "") + '" data-copy="' + esc(cp[1]) + '">' + cp[0] + "</button>";
+  });
+  if (!copies.length) h += '<div class="hint">Tap any result to copy it</div>';
+  resultsBox.innerHTML = h;
+  resultsBox.querySelectorAll("[data-copy]").forEach(function (el) {
+    el.onclick = function () { copyText(el.dataset.copy); };
+  });
+  setBar(sum);
+}
+
+// ---- Result bar ----
+// Whenever the main result is out of view (scrolled away or behind the
+// keypad), show it in a bar at the bottom: above the tab bar normally, or
+// above the keypad while typing (when the tab bar is hidden).
+var typing = false, barQueued = false;
+var navEl = document.querySelector("nav");
+function setTyping(on) {
+  typing = on;
+  document.body.classList.toggle("typing", on);
+  placeBar();
+  // Check again once the keypad has finished sliding open or closed
+  setTimeout(placeBar, 400);
+}
+// Keep the selected box in view without needless jumps. The phone's
+// browser may scroll on its own when the keypad opens; if the box would
+// still be above the keypad at the scroll position it had when you tapped
+// it, put the page back there. Only if the keypad really covers the box,
+// scroll just enough to lift it above the keypad (plus room for the
+// result bar).
+// It only acts just after a box is selected while the keypad opens. Once
+// you move the page yourself, it leaves the scroll alone until you pick
+// another box.
+var focusY = 0, adjustUntil = 0, userMoved = false;
+["touchstart", "wheel"].forEach(function (ev) {
+  window.addEventListener(ev, function () { userMoved = true; }, { passive: true });
+});
+function keepVisible() {
+  var el = document.activeElement;
+  if (!typing || !el || el.tagName !== "INPUT") return;
+  if (userMoved || Date.now() > adjustUntil) return;
+  var vv = window.visualViewport;
+  var visH = vv ? vv.height : window.innerHeight;
+  var r = el.getBoundingClientRect();
+  var docTop = r.top + window.scrollY, docBottom = r.bottom + window.scrollY;
+  if (docTop - focusY >= 0 && docBottom - focusY <= visH) {
+    if (window.scrollY !== focusY) window.scrollTo(0, focusY);
+  } else if (docBottom - focusY > visH) {
+    window.scrollTo(0, docBottom - visH + 60);
+  } else {
+    window.scrollTo(0, docTop - 12);
+  }
+  focusY = window.scrollY;
+  placeBar();
+}
+document.addEventListener("focusin", function (e) {
+  if (e.target.tagName !== "INPUT") return;
+  focusY = window.scrollY;
+  userMoved = false;
+  adjustUntil = Date.now() + 1000; // long enough for the keypad to open
+  setTyping(true);
+  keepVisible();
+  // Again once the keypad is fully open
+  setTimeout(keepVisible, 350);
+});
+document.addEventListener("focusout", function (e) {
+  // Moving straight to another box keeps the keypad state
+  var next = e.relatedTarget;
+  if (!next || next.tagName !== "INPUT") setTyping(false);
+});
+function placeBar() {
+  if (barQueued) return;
+  barQueued = true;
+  requestAnimationFrame(function () {
+    barQueued = false;
+    if (!resultsBox) { bar.classList.remove("show"); return; }
+    // The part of the page you can actually see: not under the keypad,
+    // and not under the tab bar when it's showing
+    var vv = window.visualViewport;
+    var top = vv ? vv.offsetTop : 0;
+    var bottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+    if (!typing) bottom -= navEl.offsetHeight;
+    // While the keypad is open the bar always shows. Otherwise it hides
+    // when the whole Results box can be seen.
+    var r = resultsBox.getBoundingClientRect();
+    var covered = typing || r.top < top || r.bottom > bottom;
+    bar.classList.toggle("show", covered);
+    if (covered) bar.style.top = (bottom - bar.offsetHeight) + "px";
+  });
+}
+if (window.visualViewport) {
+  // The keypad opening shrinks the visible area: keep the box in view
+  window.visualViewport.addEventListener("resize", keepVisible);
+  window.visualViewport.addEventListener("resize", placeBar);
+  window.visualViewport.addEventListener("scroll", placeBar);
+}
+window.addEventListener("scroll", placeBar);
+window.addEventListener("resize", placeBar);
+
+function setBar(sum) {
+  bar.classList.toggle("long", S.tab === 4);
+  bar.innerHTML = "<small>" + sum[0] + "</small><span>" + sum[1] + "</span>";
+  placeBar();
+}
+
+document.querySelectorAll("nav button").forEach(function (b) {
+  b.onclick = function () { S.tab = +b.dataset.tab; save(); render(); window.scrollTo(0, 0); };
+});
+applyTheme();
+render();
+if (typeof APP_VERSION === "string")
+  document.getElementById("ver").textContent = APP_VERSION + (typeof APP_DATE === "string" ? " - " + APP_DATE : "");
+
+// ---- Offline support ----
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").then(function (reg) {
+      // Check for a new version whenever the app is brought back to the front
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "visible") reg.update().catch(function () {});
+      });
+    }).catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
