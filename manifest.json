@@ -1,13 +1,13 @@
 {
   "name": "Automation Tools",
   "short_name": "AutoTools",
-  "description": "Conveyor speed, sensor timing, transfer gap, drive speed, analog scaling, encoder counts, robot orientation and sensor wire colors.",
+  "description": "Calculators and quick reference for automation work: conveyor speed and gapping, VFD, analog scaling, encoders, IP/subnet, motor FLA, wiring and sensors, symbols, AWG, tap drills, PowerFlex 525 and ABB robot tools.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#1e293b",
-  "theme_color": "#1e293b",
+  "background_color": "#0d1014",
+  "theme_color": "#0d1014",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
