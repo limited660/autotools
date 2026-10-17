@@ -595,7 +595,7 @@ html.nozoom #app { touch-action: pan-y; }
 .hist .hrow:first-of-type { border-top: 0; }
 .hist .hres { font-weight: 700; font-size: 17px; }
 .hist .hin { font-size: 14px; color: var(--muted); margin-top: 2px; }
-.hist .htime { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.hist .htime { font-size: 13px; color: var(--muted); white-space: nowrap; text-align: right; line-height: 1.35; }
 .hist .hempty { color: var(--muted); font-size: 15px; text-align: center; margin: 0; }
 .hist .hclear { display: block; margin: 8px auto 0; }
 .warnrow { color: var(--error); font-weight: 600; font-size: 15px; margin-top: 10px; text-align: center; }
@@ -2153,7 +2153,7 @@ function inputsText() {
 function scheduleHist() {
   histPending = true;
   clearTimeout(histT);
-  if (typing) return; // wait until the keypad closes (setTyping picks it up)
+  if (typing && kbWasOpen) return; // wait until the keypad closes (setTyping picks it up)
   histT = setTimeout(addHist, 3000);
 }
 function addHist() {
@@ -2176,9 +2176,10 @@ function renderHist() {
   if (!list.length) h += '<p class="hempty">Results you work out are saved here.</p>';
   list.forEach(function (e, n) {
     var d = new Date(e.t);
-    var tm = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    if (new Date().toDateString() !== d.toDateString())
-      tm = d.toLocaleDateString([], { month: "numeric", day: "numeric" }) + " " + tm;
+    // time, with the date (mm/dd/yyyy) under it
+    var p2 = function (n) { return (n < 10 ? "0" : "") + n; };
+    var tm = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "<br>" +
+      p2(d.getMonth() + 1) + "/" + p2(d.getDate()) + "/" + d.getFullYear();
     h += '<div class="hrow" data-n="' + n + '"><div><div class="hres">' + e.r + '</div><div class="hin">' +
       e.i + '</div></div><div class="htime">' + tm + "</div></div>";
   });
@@ -2518,8 +2519,19 @@ function keepVisible() {
   focusY = window.scrollY;
   placeBar();
 }
+// Is the on-screen keypad open? The visible height drops well below the tallest seen at
+// this width. Phones can close the keypad (back button, swipe down) without leaving the box.
+var kbMaxH = 0, kbW = 0, kbWasOpen = false;
+function kbOpen() {
+  var h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  if (window.innerWidth !== kbW) { kbW = window.innerWidth; kbMaxH = 0; } // turned the phone
+  kbMaxH = Math.max(kbMaxH, h);
+  return h < kbMaxH - 120;
+}
+kbOpen();
 document.addEventListener("focusin", function (e) {
   if (e.target.tagName !== "INPUT") return;
+  kbWasOpen = false;
   focusY = window.scrollY;
   userMoved = false;
   adjustUntil = Date.now() + 1000; // long enough for the keypad to open
@@ -2550,6 +2562,15 @@ function placeBar() {
 if (window.visualViewport) {
   // The keypad opening shrinks the visible area: keep the box in view
   window.visualViewport.addEventListener("resize", keepVisible);
+  // Keypad closed while still in a box: count it as done, the same as tapping out
+  window.visualViewport.addEventListener("resize", function () {
+    var open = kbOpen();
+    if (!typing) return;
+    if (open) { kbWasOpen = true; clearTimeout(histT); return; } // keypad up: history waits
+    if (!kbWasOpen) return;
+    if (document.activeElement && document.activeElement.tagName === "INPUT") document.activeElement.blur();
+    if (typing) setTyping(false); // in case the phone didn't report leaving the box
+  });
   window.visualViewport.addEventListener("resize", placeBar);
   window.visualViewport.addEventListener("scroll", placeBar);
 }
