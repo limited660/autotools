@@ -1212,7 +1212,7 @@ function renderTap() {
 var GROUPS = {
   conv: [[1, "Conveyor PPM"], [2, "Sensor Timing"], [3, "Pack Gapping"], [6, "VFD"]],
   ctrl: [[7, "Analog"], [8, "Encoder"], [11, "IP/Subnet"]],
-  ref: [[5, "Wires"], [9, "Symbols"], [12, "AWG"], [14, "Tap drill"]],
+  ref: [[5, "Wires"], [9, "Symbols"], [12, "AWG"], [14, "Tap Drill"]],
   robot: [[4, "Orientation"]]
 };
 function groupOf(t) {
@@ -2046,9 +2046,23 @@ function openTab(t) {
 // Swipe left / right on the page to go to the next / previous tab in its group.
 // The page follows your finger; let go past a quarter of the screen (or flick) to change page.
 var swipe = null;
+// On Wires, Symbols and Tap drill a swipe steps through the page's own choices
+// (cable, symbol type, thread) instead of changing page
+var SWIPE_SUBS = {
+  5: ["c5", "pins", [4, 5]],
+  9: ["c9", "k", ["elec", "pneu", "hyd", "valves"]],
+  14: ["c14", "k", ["unc", "unf", "m"]]
+};
+// Returns what a swipe one step left (+1) or right (-1) does, or null if there's nothing that way
 function pageAt(step) {
+  var sub = SWIPE_SUBS[S.tab];
+  if (sub) {
+    var opts = sub[2], v = opts[opts.indexOf(S[sub[0]][sub[1]]) + step];
+    return v === undefined ? null : function () { S[sub[0]][sub[1]] = v; save(); render(); window.scrollTo(0, 0); };
+  }
   var list = GROUPS[groupOf(S.tab)], i = list.findIndex(function (pg) { return pg[0] === S.tab; });
-  return list[i + step] ? list[i + step][0] : null;
+  var t = list[i + step] ? list[i + step][0] : null;
+  return t === null ? null : function () { openTab(t); };
 }
 function slide(x, ms) {
   app.style.transition = ms ? "transform " + ms + "ms ease-out" : "none";
@@ -2088,7 +2102,7 @@ function endSwipe() {
   var dir = dx < 0 ? -1 : 1;
   slide(dir * w, 160); // finish sliding out...
   setTimeout(function () {
-    openTab(next);
+    next();
     slide(-dir * w, 0); // ...and slide the new page in from the other side
     app.getBoundingClientRect();
     slide(0, 200);
@@ -2124,7 +2138,7 @@ function checkUpdate() {
   }).then(function (t) {
     var m = t.match(/APP_VERSION\s*=\s*"([^"]+)"/);
     if (!m || m[1] === APP_VERSION) return;
-    updBtn.textContent = m[1] + " ready – tap to update";
+    updBtn.textContent = m[1] + " Ready – Tap to Update";
     updBtn.hidden = false;
   }).catch(function () {});
 }
