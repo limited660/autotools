@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Automation Calculators</title>
-<meta name="description" content="Conveyor speed, sensor block time, transfer gap and robot orientation calculator.">
+<meta name="description" content="Conveyor speed, sensor block time, transfer gap, robot orientation and sensor wire colors.">
 <meta name="theme-color" content="#1e293b">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
@@ -213,6 +213,41 @@ label.field > span { display: block; font-size: 16px; font-weight: 600; color: v
 .step.down { left: 6px; }
 .step.up { right: 6px; }
 .step:active { background: var(--accent); color: var(--accent-text); }
+/* ---- Wires tab ---- */
+.wires { display: flex; flex-direction: column; gap: 8px; }
+.wire {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  text-align: left;
+}
+.wire .pin {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wire .swatch {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 2px solid var(--line);
+}
+.wire .winfo b { display: block; font-size: 18px; }
+.wire .winfo b small { font-size: 14px; color: var(--muted); font-weight: 600; }
+.wire .winfo span { font-size: 15px; color: var(--muted); }
 .inwrap input.paste { font-size: 18px; padding-left: 12px; padding-right: 12px; }
 .pm {
   position: absolute;
@@ -389,6 +424,9 @@ nav button[aria-selected="true"] { opacity: 1; color: var(--accent); border-top-
   <button role="tab" data-tab="4">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h8"/><path d="M8 20v-5"/><circle cx="8" cy="13" r="2"/><path d="M9.5 11.5l5-5"/><circle cx="16" cy="5" r="2"/><path d="M17.5 6.5l2.5 2.5"/></svg>
     Robot</button>
+  <button role="tab" data-tab="5">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="6"/><circle cx="7" cy="10" r=".8" fill="currentColor"/><circle cx="11" cy="10" r=".8" fill="currentColor"/><circle cx="7" cy="14" r=".8" fill="currentColor"/><circle cx="11" cy="14" r=".8" fill="currentColor"/><path d="M15 12h7"/></svg>
+    Wires</button>
 </nav>
 <div id="toast"></div>
 <script src="version.js"></script>
@@ -423,14 +461,15 @@ var DEF = {
   c1: { u: "in", m: "spd", L: 12, g: 0, r: 100, f: 100 },
   c2: { u: "in", L: 12, g: 0, f: 100 },
   c3: { u: "in", m: "gap", L: 12, gA: 0, a: 50, b: 100, gw: 12, adj: "B" },
-  c4: { m: "e2q", x: 0, y: 0, z: 0, q1: 1, q2: 0, q3: 0, q4: 0 }
+  c4: { m: "e2q", x: 0, y: 0, z: 0, q1: 1, q2: 0, q3: 0, q4: 0 },
+  c5: { pins: 4 }
 };
 var KEY = "convcalc-v1";
 var S = JSON.parse(JSON.stringify(DEF));
 try {
   var saved = JSON.parse(localStorage.getItem(KEY) || "null");
   if (saved) {
-    ["c1", "c2", "c3", "c4"].forEach(function (c) {
+    ["c1", "c2", "c3", "c4", "c5"].forEach(function (c) {
       if (saved[c]) for (var k in S[c]) if (k in saved[c]) S[c][k] = saved[c][k];
     });
     if (saved.tab) S.tab = saved.tab;
@@ -748,12 +787,57 @@ function quatToEuler(q) {
 
 var resultsBox;
 
+// ---- Wires tab: sensor cable colors and pin numbers ----
+// Standard M8 / M12 sensor cable colors (IEC 60947-5-2 / EN 60947-5-2)
+var WIRES = [
+  { pin: 1, color: "Brown", code: "BN", hex: "#8b5a2b", use: "+V supply (10–30 V DC)" },
+  { pin: 2, color: "White", code: "WH", hex: "#f8fafc", use: "Output 2 / NC output / diagnostic" },
+  { pin: 3, color: "Blue", code: "BU", hex: "#2563eb", use: "0 V (common)" },
+  { pin: 4, color: "Black", code: "BK", hex: "#111111", use: "Output 1 / NO output / IO-Link C/Q" },
+  { pin: 5, color: "Gray", code: "GY", hex: "#9ca3af", use: "Varies by device: teach input, function input or not used" }
+];
+function renderWires() {
+  var card = document.createElement("div");
+  card.className = "card";
+  card.appendChild(seg("Cable", [[4, "4-pin"], [5, "5-pin"]], S.c5.pins, function (v) {
+    S.c5.pins = v; save(); render();
+  }));
+  var list = WIRES.slice(0, S.c5.pins);
+  var t = '<div class="wires">';
+  list.forEach(function (w) {
+    t += '<div class="wire tap" data-copy="Pin ' + w.pin + " " + w.color + " (" + w.code + ") " + w.use + '">' +
+      '<div class="pin">' + w.pin + "</div>" +
+      '<div class="swatch" style="background:' + w.hex + '"></div>' +
+      '<div class="winfo"><b>' + w.color + " <small>" + w.code + "</small></b><span>" + w.use + "</span></div></div>";
+  });
+  t += "</div>";
+  var box = document.createElement("div");
+  box.innerHTML = t;
+  card.appendChild(box);
+  card.querySelectorAll("[data-copy]").forEach(function (el) {
+    el.onclick = function () { copyText(el.dataset.copy, "Copied pin " + el.querySelector(".pin").textContent); };
+  });
+  app.appendChild(card);
+
+  var about = document.createElement("details");
+  about.className = "card about";
+  about.open = true;
+  about.innerHTML = "<summary>Notes</summary>" +
+    "<p>Standard colors for M8 and M12 sensor cables (IEC 60947-5-2). " +
+    "3-wire sensors use pins 1, 3 and 4 only: brown +V, blue 0 V, black output.</p>" +
+    "<p>On a PNP sensor the output switches to +V; on an NPN sensor it switches to 0 V.</p>" +
+    "<p>Pin 2 and pin 5 vary between makers. Always check the device's data sheet before wiring.</p>";
+  app.appendChild(about);
+  setBar(["", ""]);
+}
+
 function render() {
   invalid = {};
   document.querySelectorAll("nav button").forEach(function (b) {
     b.setAttribute("aria-selected", String(+b.dataset.tab === S.tab));
   });
   app.innerHTML = "";
+  if (S.tab === 5) { renderWires(); return; }
   var c = "c" + S.tab;
   var card = document.createElement("div");
   card.className = "card";

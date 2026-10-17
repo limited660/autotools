@@ -1,7 +1,7 @@
 {
   "name": "Automation Calculators",
   "short_name": "AutoCalc",
-  "description": "Conveyor speed, sensor block time, transfer gap and robot orientation calculator.",
+  "description": "Conveyor speed, sensor block time, transfer gap, robot orientation and sensor wire colors.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
