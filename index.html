@@ -145,7 +145,8 @@ main {
   padding: 16px;
   margin-bottom: 14px;
 }
-.card-top { display: flex; justify-content: flex-end; margin: -6px -6px 4px 0; }
+.card-top { display: flex; justify-content: flex-end; align-items: center; position: relative; margin: -6px -6px 12px 0; }
+.card-top .pagetitle { position: absolute; left: 0; right: 0; text-align: center; pointer-events: none; margin: 0; }
 .reset {
   border: 0;
   background: transparent;
@@ -303,7 +304,7 @@ label.field > span { display: block; font-size: 16px; font-weight: 600; color: v
 
 /* ---- Results ---- */
 .results { text-align: center; }
-.results h2, .about summary {
+.results h2, .about summary, .pagetitle {
   margin: 0 0 10px;
   font-size: 15px;
   text-transform: uppercase;
@@ -429,8 +430,6 @@ nav button[aria-selected="true"] { opacity: 1; color: var(--accent); border-top-
 
 /* ---- Page tabs for the open group (under the header) ---- */
 #pages {
-  display: flex;
-  gap: 6px;
   padding: 0 16px 12px;
   background: var(--head);
   overflow-x: auto;
@@ -438,19 +437,27 @@ nav button[aria-selected="true"] { opacity: 1; color: var(--accent); border-top-
 }
 #pages::-webkit-scrollbar { display: none; }
 #pages:empty { display: none; }
+#pages, nav { touch-action: pan-y; } /* sideways drags here are swipes */
+#pages .track {
+  display: flex;
+  background: rgba(255,255,255,.06);
+  border-radius: 12px;
+  padding: 3px;
+}
 #pages button {
   flex: 1 1 0;
-  border: 1px solid rgba(255,255,255,.2);
+  border: 0;
   background: transparent;
   color: var(--head-text);
-  border-radius: 14px;
-  padding: 6px 4px;
-  font-size: 15px;
+  opacity: .75;
+  border-radius: 9px;
+  padding: 6px 2px;
+  font-size: 14px;
   line-height: 1.15;
   font-weight: 600;
   cursor: pointer;
 }
-#pages button[aria-selected="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+#pages button[aria-selected="true"] { background: var(--accent); color: var(--accent-text); opacity: 1; }
 
 html.nozoom, html.nozoom body { touch-action: pan-y; }
 /* The page only scrolls up and down by itself; sideways drags are page swipes */
@@ -1088,6 +1095,7 @@ function textBox(label, value, ph) {
 function renderSubnet() {
   var card = document.createElement("div");
   card.className = "card";
+  card.innerHTML = '<h2 class="pagetitle" style="text-align:center;margin:0 0 12px">IP/Subnet</h2>';
   var ipBox = textBox("IP Address (Optional)", S.c11.ip, "192.168.1.50");
   var mBox = textBox("Subnet Mask or /Prefix", S.c11.mask);
   ipBox.inp.inputMode = "decimal"; // number pad with a "." key
@@ -1525,6 +1533,9 @@ function render() {
   // Page tabs for this group (none when the group has only one page)
   var pages = document.getElementById("pages");
   pages.innerHTML = "";
+  var track = document.createElement("div"); // one shaded bar holding the tabs
+  track.className = "track";
+  if (GROUPS[grp].length > 1) pages.appendChild(track);
   if (GROUPS[grp].length > 1) GROUPS[grp].forEach(function (pg) {
     var b = document.createElement("button");
     b.type = "button";
@@ -1532,7 +1543,7 @@ function render() {
     b.innerHTML = pg[1].replace(" ", "<br>"); // two-word names go on two rows
     b.setAttribute("aria-selected", String(pg[0] === S.tab));
     b.onclick = function () { openTab(pg[0]); };
-    pages.appendChild(b);
+    track.appendChild(b);
   });
   app.innerHTML = "";
   histBox = null;
@@ -1558,6 +1569,12 @@ function render() {
     render();
     toast("Reset to defaults");
   };
+  // page name, styled like the Results heading
+  var pg = GROUPS[groupOf(S.tab)].find(function (x) { return x[0] === S.tab; });
+  var ttl = document.createElement("h2");
+  ttl.className = "pagetitle";
+  ttl.textContent = pg ? pg[1] : "";
+  top.appendChild(ttl);
   top.appendChild(rb);
   card.appendChild(top);
 
@@ -2058,7 +2075,13 @@ var SWIPE_SUBS = {
   14: ["c14", "k", ["unc", "unf", "m"]]
 };
 // Returns what a swipe one step left (+1) or right (-1) does, or null if there's nothing that way
-function pageAt(step, onSub) {
+var GROUP_ORDER = ["conv", "ctrl", "ref", "robot"];
+function pageAt(step, onSub, onNav) {
+  if (onNav) {
+    // bottom menu: next / previous group, opening the page last used there
+    var g = GROUP_ORDER[GROUP_ORDER.indexOf(groupOf(S.tab)) + step];
+    return g ? function () { openTab(S.last[g]); } : null;
+  }
   var sub = onSub && SWIPE_SUBS[S.tab];
   if (sub) {
     var opts = sub[2], v = opts[opts.indexOf(S[sub[0]][sub[1]]) + step];
@@ -2078,11 +2101,12 @@ function slide(x, ms, sub) {
 // Listens on the whole screen so the empty space under the page swipes too
 document.addEventListener("touchstart", function (e) {
   var t = e.target;
-  // not on the header, tab strips or bars, while typing, on a zoomed-in Symbols page, or with two fingers
-  if (e.touches.length !== 1 || t.closest("input, select, textarea, header, nav, #pages, #upd, #bar") ||
+  // not on the header or bars, while typing, on a zoomed-in Symbols page, or with two fingers.
+  // The tab strip swipes between pages; the bottom menu swipes between groups
+  if (e.touches.length !== 1 || t.closest("input, select, textarea, header, #upd, #bar") ||
       (window.visualViewport && window.visualViewport.scale > 1.01)) { swipe = null; return; }
   swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), dx: 0, side: false,
-    sub: !!SWIPE_SUBS[S.tab] && !!t.closest(".swipebox, .seg") };
+    sub: !!SWIPE_SUBS[S.tab] && !!t.closest(".swipebox, .seg"), nav: !!t.closest("nav") };
 }, { passive: true });
 document.addEventListener("touchmove", function (e) {
   if (!swipe) return;
@@ -2097,7 +2121,7 @@ document.addEventListener("touchmove", function (e) {
   }
   e.preventDefault(); // don't scroll up and down while dragging sideways
   // no page that way: drag with resistance
-  swipe.dx = pageAt(dx < 0 ? 1 : -1, swipe.sub) ? dx : dx / 3;
+  swipe.dx = pageAt(dx < 0 ? 1 : -1, swipe.sub, swipe.nav) ? dx : dx / 3;
   slide(swipe.dx, 0, swipe.sub);
 }, { passive: false });
 function endSwipe() {
@@ -2105,8 +2129,9 @@ function endSwipe() {
   var sw = swipe;
   swipe = null;
   if (!sw.side) return;
+  noClickUntil = Date.now() + 400; // a swipe that ends on a button isn't a tap
   var w = window.innerWidth, dx = sw.dx, fast = Math.abs(dx) / (Date.now() - sw.t) > 0.5;
-  var next = pageAt(dx < 0 ? 1 : -1, sw.sub);
+  var next = pageAt(dx < 0 ? 1 : -1, sw.sub, sw.nav);
   if (!next || (Math.abs(dx) < w / 4 && !fast)) { slide(0, 180, sw.sub); return; } // snap back
   var dir = dx < 0 ? -1 : 1;
   slide(dir * w, 160, sw.sub); // finish sliding out...
@@ -2117,6 +2142,10 @@ function endSwipe() {
     slide(0, 200, sw.sub);
   }, 160);
 }
+var noClickUntil = 0;
+document.addEventListener("click", function (e) {
+  if (Date.now() < noClickUntil) { e.stopPropagation(); e.preventDefault(); }
+}, true);
 document.addEventListener("touchend", endSwipe);
 document.addEventListener("touchcancel", endSwipe);
 // A group button opens the page you last used in that group
