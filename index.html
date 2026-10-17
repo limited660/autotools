@@ -455,6 +455,7 @@ footer {
 .logsheet ul { margin: 0; padding-left: 20px; }
 .logsheet li { margin: 4px 0; line-height: 1.4; }
 
+.brand { display: none; } /* app icon and name: computer sidebar only */
 /* ---- Bottom tab bar ---- */
 nav {
   position: fixed;
@@ -716,7 +717,12 @@ footer { padding-bottom: calc(var(--nav-h) + 40px + env(safe-area-inset-bottom))
   :root { --side: 210px; }
   body { padding-left: var(--side); }
   nav { top: 0; bottom: 0; left: 0; right: auto; width: var(--side); flex-direction: column; justify-content: flex-start;
-    gap: 4px; padding: 88px 12px 12px; border: 0; border-right: 1px solid var(--line); border-radius: 0; box-shadow: none; }
+    gap: 4px; padding: 18px 12px 12px; border: 0; border-right: 1px solid var(--line); border-radius: 0; box-shadow: none; }
+  .brand { display: flex; align-items: center; gap: 12px; padding: 4px 6px 22px; }
+  .brand img { width: 46px; height: 46px; border-radius: 12px; }
+  .brand span { font-size: 14px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; line-height: 1.15; }
+  header h1 .apptitle { display: none; } /* the name is in the sidebar */
+  header { padding-top: 20px; }
   nav button { flex: 0 0 auto; height: 46px; flex-direction: row; justify-content: flex-start; gap: 12px;
     padding: 0 14px; font-size: 15px; border-radius: 12px; }
   nav button svg { width: 22px; height: 22px; }
@@ -759,6 +765,7 @@ footer { padding-bottom: calc(var(--nav-h) + 40px + env(safe-area-inset-bottom))
   </div>
 </div>
 <nav role="tablist">
+  <div class="brand" aria-hidden="true"><img src="icon-192.png" alt=""><span>Automation<br>Tools</span></div>
   <button role="tab" data-group="fav">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>
     Favorites</button>

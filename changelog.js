@@ -1,6 +1,10 @@
 // What's New. Add a new entry at the top with every version (same number as version.js).
 // Keep each line short and in plain words: what changed for the person using the app.
 var CHANGELOG = [
+  { v: "v81", d: "10/17/2026", n: [
+    "New app icon: a safety-yellow hazard-stripe frame with AT",
+    "On a computer, the icon and app name sit at the top of the sidebar"
+  ] },
   { v: "v80", d: "10/17/2026", n: [
     "Shared links show an up-to-date description and the app icon"
   ] },
