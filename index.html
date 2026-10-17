@@ -545,6 +545,8 @@ html.nozoom #app { touch-action: pan-y; }
   border-bottom: 1px solid var(--line); text-align: left; }
 .pf > div:last-child { border-bottom: 0; }
 .pf b { color: var(--accent-ink); font-size: 16px; grid-row: span 2; }
+.tl.rapid code { display: block; font: 600 14px/1.35 Consolas, "Courier New", monospace; color: var(--accent-ink, var(--accent));
+  word-break: break-word; }
 .tl > div { padding: 9px 0; border-bottom: 1px solid var(--line); text-align: left; }
 .tl > div:last-child { border-bottom: 0; }
 .tl b { display: block; font-size: 16px; }
@@ -672,6 +674,9 @@ label.field:has(.stepper) > span { padding-left: 4px; }
 .big { font-size: 48px; letter-spacing: -.03em; }
 .results .big { color: var(--accent-ink); }
 .results .big-label, .results .alt, .results .hint { text-align: left; }
+.results .cell { text-align: center; } /* quaternion / angle boxes stay centered */
+.cell span { position: relative; }
+.cell .deg { position: absolute; left: 100%; font-style: normal; } /* the degree sign doesn't shift the number off center */
 .about summary { font-size: 13px; letter-spacing: .1em; }
 .row { font-size: 16px; }
 
@@ -763,7 +768,11 @@ var DEF = {
   c11: { mask: "255.255.255.0", ip: "" },
   c14: { k: "unc" },
   c15: { k: "par" },
-  c16: { ph: 3, pu: "hp", p: 5, v: 480, eff: 90, pf: 85 }
+  c16: { ph: 3, pu: "hp", p: 5, v: 480, eff: 90, pf: 85 },
+  // Offs / RelTool: a point pointing straight down (Y 180) moved 100 mm along Z
+  c18: { x: 600, y: 0, z: 800, ax: 0, ay: 180, az: 0, dx: 0, dy: 0, dz: 100, rx: 0, ry: 0, rz: 0 },
+  c19: { k: "speed" },
+  c20: { k: "move" }
 };
 var KEY = "autotools-v1";
 var S = JSON.parse(JSON.stringify(DEF));
@@ -771,7 +780,7 @@ try {
   // Older versions saved under "convcalc-v1"; carry those values over
   var saved = JSON.parse(localStorage.getItem(KEY) || localStorage.getItem("convcalc-v1") || "null");
   if (saved) {
-    ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c11", "c14", "c15", "c16"].forEach(function (c) {
+    ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c11", "c14", "c15", "c16", "c18", "c19", "c20"].forEach(function (c) {
       if (saved[c]) for (var k in S[c]) if (k in saved[c]) S[c][k] = saved[c][k];
     });
     if (saved.tab) S.tab = saved.tab;
@@ -846,6 +855,20 @@ var FIELDS = {
     { k: "D", label: "Measuring Wheel / Drum Diameter", len: true },
     { k: "dist", label: "Distance to Count", len: true },
     { k: "f", label: "Belt Speed", d: 0, unit: "FPM" }
+  ],
+  c18: [
+    { k: "x", label: "Point X", unit: "mm", neg: true, raw: true },
+    { k: "y", label: "Point Y", unit: "mm", neg: true, raw: true },
+    { k: "z", label: "Point Z", unit: "mm", neg: true, raw: true },
+    { k: "ax", label: "Point X Angle", unit: "°", neg: true, raw: true },
+    { k: "ay", label: "Point Y Angle", unit: "°", neg: true, raw: true },
+    { k: "az", label: "Point Z Angle", unit: "°", neg: true, raw: true },
+    { k: "dx", label: "Offset X", unit: "mm", neg: true, raw: true },
+    { k: "dy", label: "Offset Y", unit: "mm", neg: true, raw: true },
+    { k: "dz", label: "Offset Z", unit: "mm", neg: true, raw: true },
+    { k: "rx", label: "RelTool \\Rx", unit: "°", neg: true, raw: true },
+    { k: "ry", label: "RelTool \\Ry", unit: "°", neg: true, raw: true },
+    { k: "rz", label: "RelTool \\Rz", unit: "°", neg: true, raw: true }
   ],
   c4q: [
     { k: "q1", label: "q1", unit: "", neg: true, raw: true },
@@ -1142,6 +1165,17 @@ function eulerToQuat(xd, yd, zd) {
     cz * sy * cx + sz * cy * sx,
     sz * cy * cx - cz * sy * sx
   ];
+}
+// Quaternion helpers for Offs / RelTool ([q1, q2, q3, q4] with q1 the scalar, like ABB)
+function qMul(a, b) {
+  return [a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3],
+    a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2],
+    a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1],
+    a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]];
+}
+function qRotate(q, v) { // turn vector v by q: q * v * q'
+  var r = qMul(qMul(q, [0, v[0], v[1], v[2]]), [q[0], -q[1], -q[2], -q[3]]);
+  return [r[1], r[2], r[3]];
 }
 function quatToEuler(q) {
   var w = q[0], x = q[1], y = q[2], z = q[3], d = 180 / Math.PI;
@@ -1635,13 +1669,120 @@ var SENSOR_TEXT = {
   ]
 };
 
+// ---- Speed Zone tab: ABB speeddata and zonedata ----
+var SPEEDS = [5, 10, 20, 30, 40, 50, 60, 80, 100, 150, 200, 300, 400, 500, 600, 800, 1000, 1500, 2000, 2500,
+  3000, 4000, 5000, 6000, 7000];
+// [name, TCP zone radius in mm (blank for fine)]
+var ZONES = [["fine", ""], ["z0", 0.3], ["z1", 1], ["z5", 5], ["z10", 10], ["z15", 15], ["z20", 20], ["z30", 30],
+  ["z40", 40], ["z50", 50], ["z60", 60], ["z80", 80], ["z100", 100], ["z150", 150], ["z200", 200]];
+function renderSpeedZone() {
+  var card = document.createElement("div");
+  card.className = "card";
+  if (["speed", "zone"].indexOf(S.c19.k) < 0) S.c19.k = "speed";
+  card.appendChild(seg("Speed Zone", [["speed", "Speed"], ["zone", "Zone"]], S.c19.k, function (v) {
+    S.c19.k = v; save(); render();
+  }));
+  var t;
+  if (S.c19.k === "speed") {
+    t = '<div class="awg c3"><b>speeddata</b><b>mm/s</b><b>in/s</b>' + SPEEDS.map(function (v) {
+      return "<span>v" + v + "</span><span>" + v + "</span><span>" + plain(v / MM, 1) + "</span>";
+    }).join("") + "</div>";
+  } else {
+    t = '<div class="awg c3"><b>zonedata</b><b>Radius</b><b>Inches</b>' + ZONES.map(function (z) {
+      return "<span>" + z[0] + "</span><span>" + (z[1] === "" ? "Stops" : z[1] + " mm") + "</span><span>" +
+        (z[1] === "" ? "&mdash;" : plain(z[1] / MM, 2)) + "</span>";
+    }).join("") + "</div>";
+  }
+  var box = document.createElement("div");
+  box.className = "swipebox"; // slides on its own when swiping between choices
+  box.innerHTML = t;
+  card.appendChild(box);
+  app.appendChild(card);
+  var about = document.createElement("details");
+  about.className = "card about";
+  about.innerHTML = "<summary>Notes</summary>" + (S.c19.k === "speed" ?
+    "<p>The number in a speeddata name is the TCP speed in mm/s, so v500 is 500 mm/s. The robot slows down on its own " +
+    "if an axis can't keep up, and the speed override on the pendant scales everything.</p>" +
+    "<p>MoveJ uses the same speed as a guide, but the path isn't straight, so the TCP speed varies.</p>" :
+    "<p>A zone lets the robot round the corner and keep moving instead of stopping at the point. The radius is how " +
+    "close the TCP must come to the point before it heads for the next one.</p>" +
+    "<p>Use fine where the robot must really stop, such as a pick, a place, or before I/O that must happen at the exact " +
+    "point. Large zones are faster but cut corners. The zone is cut down automatically if the moves are short.</p>");
+  app.appendChild(about);
+  setBar(["", ""]);
+}
+
+// ---- RAPID tab: common instructions and data types ----
+// [instruction or keyword, what it does]
+var RAPID = {
+  move: [
+    ["MoveJ p10, v500, z50, tool0;", "Joint move: the fastest way there, but the path isn't a straight line."],
+    ["MoveL p10, v500, z50, tool0;", "Straight-line move of the tool point."],
+    ["MoveC p_via, p_end, v200, z10, tool0;", "Arc through a middle point to the end point."],
+    ["MoveAbsJ j10, v500, fine, tool0;", "Moves to set joint angles. Good for home positions; no configuration problems."],
+    ["ConfL \\Off;", "Lets MoveL finish even if the configuration changes. Use with care."],
+    ["SingArea \\Wrist;", "Lets the tool orientation shift a little to get through a wrist singularity."],
+    ["StopMove; / StartMove;", "Pauses and resumes the motion, for example from an error handler."]
+  ],
+  io: [
+    ["SetDO do_Gripper, 1;", "Sets a digital output on (1) or off (0)."],
+    ["PulseDO \\PLength:=0.5, do_Horn;", "Turns an output on for a set time (seconds)."],
+    ["WaitDI di_PartPresent, 1;", "Waits until an input is on. Add \\MaxTime:=5 so it can't wait forever."],
+    ["WaitUntil di_A = 1 AND di_B = 0;", "Waits for any condition."],
+    ["WaitTime 0.5;", "Waits a set time in seconds. WaitTime \\InPos waits until the robot has stopped first."],
+    ["TPWrite \"Part done\";", "Writes a message on the pendant."],
+    ["Tip", "I/O right after a zone move happens before the robot reaches the point. Use fine, or TriggL, for exact timing."]
+  ],
+  points: [
+    ["Offs(p10, 0, 0, 100)", "The same point moved along the work object's X, Y and Z (see Offsets)."],
+    ["RelTool(p10, 0, 0, -100 \\Rz:=90)", "The same point moved along the tool's own axes, and turned about them."],
+    ["CRobT(\\Tool:=tool1 \\WObj:=wobj1)", "The robot's current position as a robtarget."],
+    ["CJointT()", "The robot's current joint angles as a jointtarget."],
+    ["p10.trans.z := p10.trans.z + 50;", "Change one part of a robtarget directly."],
+    ["Distance(p10.trans, p20.trans)", "Straight-line distance between two points in mm."]
+  ],
+  data: [
+    ["CONST", "Fixed value that never changes while running."],
+    ["VAR", "Changes while running; goes back to its start value when the program is reset."],
+    ["PERS", "Keeps its last value through restarts and is shared between tasks. Saved in the module."],
+    ["robtarget", "A position: [[x, y, z], [q1, q2, q3, q4], [cf1, cf4, cf6, cfx], [external axes]]."],
+    ["jointtarget", "Joint angles: [[ax1 ... ax6], [external axes]]."],
+    ["tooldata", "The tool: TCP offset and orientation, plus its weight and center of gravity."],
+    ["wobjdata", "A work object: the frame that positions are measured from."],
+    ["speeddata / zonedata", "How fast to move and how close to come to each point (see Speed Zone)."],
+    ["num / bool / string", "Number, true or false, and text."]
+  ]
+};
+function renderRapid() {
+  var card = document.createElement("div");
+  card.className = "card";
+  if (!RAPID[S.c20.k]) S.c20.k = "move";
+  card.appendChild(seg("RAPID", [["move", "Motion"], ["io", "I/O"], ["points", "Points"], ["data", "Data"]], S.c20.k, function (v) {
+    S.c20.k = v; save(); render();
+  }));
+  var box = document.createElement("div");
+  box.className = "swipebox"; // slides on its own when swiping between choices
+  box.innerHTML = '<div class="tl rapid">' + RAPID[S.c20.k].map(function (r) {
+    return "<div><code>" + r[0] + "</code><span>" + r[1] + "</span></div>";
+  }).join("") + "</div>";
+  card.appendChild(box);
+  app.appendChild(card);
+  var about = document.createElement("details");
+  about.className = "card about";
+  about.innerHTML = "<summary>Notes</summary>" +
+    "<p>Short reminders of the instructions used most, not the full syntax. The RAPID reference manual on the " +
+    "controller has every option.</p>";
+  app.appendChild(about);
+  setBar(["", ""]);
+}
+
 // Tools are grouped; the bottom bar picks the group, the strip under the
 // header picks the page within it
 var GROUPS = {
   conv: [[1, "Conveyor PPM"], [2, "Sensor Timing"], [3, "Pack Gapping"], [6, "VFD"]],
   ctrl: [[7, "Analog"], [8, "Encoder"], [11, "IP/Subnet"], [16, "Motor FLA"]],
   ref: [[5, "Wiring"], [12, "AWG"], [9, "Symbols"], [14, "Tap Drill"], [15, "PF525"]],
-  robot: [[4, "Orientation"]]
+  robot: [[4, "Orientation"], [18, "Offsets"], [19, "Speed Zone"], [20, "RAPID"]]
 };
 function groupOf(t) {
   for (var g in GROUPS) if (GROUPS[g].some(function (x) { return x[0] === t; })) return g;
@@ -2005,6 +2146,8 @@ function renderPage() {
   if (S.tab === 12) { renderAWG(); return; }
   if (S.tab === 14) { renderTap(); return; }
   if (S.tab === 15) { renderPF(); return; }
+  if (S.tab === 19) { renderSpeedZone(); return; }
+  if (S.tab === 20) { renderRapid(); return; }
   var c = "c" + S.tab;
   var card = document.createElement("div");
   card.className = "card";
@@ -2066,6 +2209,8 @@ function renderPage() {
     card.appendChild(seg("Convert", [["e2q", "Angles → Quaternion"], ["q2e", "Quaternion → Angles"]], S.c4.m, function (v) {
       S.c4.m = v; save(); render();
     }));
+  } else if (S.tab === 18) {
+    // no selector: offsets are always in mm
   } else if (S.tab === 16) {
     card.appendChild(seg("Supply", [[3, "3-Phase"], [1, "Single-Phase"]], S.c16.ph, function (v) {
       S.c16.ph = v; save(); render();
@@ -2093,6 +2238,7 @@ function renderPage() {
   else if (S.tab === 7) list = analogFields();
   else if (S.tab === 8) list = FIELDS.c8;
   else if (S.tab === 16) list = motorFields();
+  else if (S.tab === 18) list = FIELDS.c18;
   else list = S.c4.m === "e2q" ? FIELDS.c4e : FIELDS.c4q;
   curList = list;
 
@@ -2257,6 +2403,15 @@ function describe() {
       p("Quaternions you enter are normalized first, so q1&sup2; + q2&sup2; + q3&sup2; + q4&sup2; = 1. " +
         "Values are shown to 6 decimal places. Note that OrientZYX takes the angles as Z, Y, X.");
   }
+  if (S.tab === 18) {
+    return p("Shows where a RAPID offset sends the robot. Enter the point's position and its X, Y, Z angles " +
+        "(the same Z-Y-X angles as the Orientation page), then the offset.") +
+      fm("Offs(p, x, y, z): moves along the work object's X, Y and Z") +
+      fm("RelTool(p, x, y, z): moves along the tool's own X, Y and Z") +
+      p("With the tool pointing straight down (Y angle 180), RelTool Z +100 moves the robot 100 mm down, " +
+        "toward the part, while Offs Z +100 moves it 100 mm up. RelTool's \\Rx, \\Ry and \\Rz turn the tool " +
+        "about its own axes, in that order. The result is in the same work object as the point.");
+  }
   if (S.tab === 16) {
     return p("Estimates a motor's full-load current from its power, voltage, efficiency and power factor. " +
         "Use it when the nameplate is missing or to sanity-check a reading.") +
@@ -2418,6 +2573,23 @@ function renderResults() {
       row("Resolution", resTxt[0], resTxt[1], resTxt[0]) +
       row("Input Frequency at " + fmt(e8.f, 0) + " FPM", fA >= 1000 ? fmt(fA / 1000, 2) + " kHz" : fmt(fA, 0) + " Hz") + "</div>";
     sum = ["Counts", fmt(cnt, 1)];
+  } else if (S.tab === 18) {
+    var o = S.c18, qp = eulerToQuat(o.ax, o.ay, o.az);
+    var xyz = function (v) { return v.map(function (n) { return plain(n, 2); }).join(", "); };
+    // Offs: along the work object's X, Y, Z
+    var off = [o.x + o.dx, o.y + o.dy, o.z + o.dz];
+    // RelTool: along the tool's own X, Y, Z (the point's orientation), then turned about tool X, Y, Z
+    var d = qRotate(qp, [o.dx, o.dy, o.dz]), rel = [o.x + d[0], o.y + d[1], o.z + d[2]];
+    var rot = eulerToQuat(o.rx, 0, 0), qr = qMul(qMul(qMul(qp, rot), eulerToQuat(0, o.ry, 0)), eulerToQuat(0, 0, o.rz));
+    var qs = qr.map(function (n) { return plain(n, 6); });
+    h += '<div class="big-label">Offs(p, ' + [o.dx, o.dy, o.dz].join(", ") + ")</div>" +
+      '<div class="big tap" style="font-size:30px" data-copy="[' + xyz(off) + ']">[' + xyz(off) + "]</div>";
+    h += '<div class="rows">' + row("Orientation", "unchanged") + "</div>";
+    h += '<div class="big-label" style="margin-top:16px">RelTool(p, ' + [o.dx, o.dy, o.dz].join(", ") +
+      (o.rx ? " \\Rx:=" + o.rx : "") + (o.ry ? " \\Ry:=" + o.ry : "") + (o.rz ? " \\Rz:=" + o.rz : "") + ")</div>" +
+      '<div class="big tap" style="font-size:30px" data-copy="[' + xyz(rel) + ']">[' + xyz(rel) + "]</div>";
+    h += '<div class="rows">' + row("Orientation", "[" + qs.join(", ") + "]", "", "[" + qs.join(",") + "]") + "</div>";
+    sum = ["RelTool", "[" + xyz(rel) + "]"];
   } else if (S.tab === 16) {
     var m16 = S.c16;
     if (m16.v === 0) return stop();
@@ -2454,7 +2626,7 @@ function renderResults() {
       var e = quatToEuler(qn).map(function (x) { return plain(x, 6); });
       h += '<div class="big-label">Euler Angles</div><div class="grid g3">' +
         ["X", "Y", "Z"].map(function (a, i) {
-          return '<div class="cell tap" data-copy="' + e[i] + '"><b>' + a + "</b><span>" + e[i] + "&deg;</span></div>";
+          return '<div class="cell tap" data-copy="' + e[i] + '"><b>' + a + "</b><span>" + e[i] + '<i class="deg">&deg;</i></span></div>';
         }).join("") + "</div>";
       h += '<div class="rows">' + row("Normalized",
         "[" + qn.map(function (x) { return plain(x, 6); }).join(", ") + "]") + "</div>";
@@ -2596,7 +2768,9 @@ var SWIPE_SUBS = {
   5: ["c5", "pins", ["cables", "pnp", "sensors", "codes"]],
   9: ["c9", "k", ["elec", "pneu", "hyd", "valves"]],
   14: ["c14", "k", ["unc", "unf", "m", "chart"]],
-  15: ["c15", "k", ["par", "flt"]]
+  15: ["c15", "k", ["par", "flt"]],
+  19: ["c19", "k", ["speed", "zone"]],
+  20: ["c20", "k", ["move", "io", "points", "data"]]
 };
 var GROUP_ORDER = ["conv", "ctrl", "ref", "robot"];
 var GROUP_NAMES = { conv: "Conveyor", ctrl: "Controls", ref: "Reference", robot: "Robot" };

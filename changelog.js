@@ -1,6 +1,10 @@
 // What's New. Add a new entry at the top with every version (same number as version.js).
 // Keep each line short and in plain words: what changed for the person using the app.
 var CHANGELOG = [
+  { v: "v74", d: "10/17/2026", n: [
+    "New Robot pages: Offsets (where Offs and RelTool send the robot), Speed Zone (speeddata and zonedata) and a RAPID cheat sheet",
+    "Orientation result boxes are centered again, with the degree sign no longer pushing the number off center"
+  ] },
   { v: "v73", d: "10/17/2026", n: [
     "Closing the keypad counts as done editing, so history saves without tapping out of the box",
     "History shows the date (mm/dd/yyyy) under the time"
