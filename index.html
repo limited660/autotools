@@ -281,6 +281,12 @@ label.field > span { display: block; font-size: 16px; font-weight: 600; color: v
 .big { font-size: 44px; font-weight: 700; line-height: 1.1; }
 .big small { font-size: 22px; font-weight: 600; color: var(--muted); }
 .subout { text-align: center; }
+.awg { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; text-align: center; }
+.awg b { font-size: 14px; color: var(--muted); padding: 0 0 8px; border-bottom: 1px solid var(--line); }
+.awg span { padding: 9px 0; border-bottom: 1px solid var(--line); font-weight: 600; }
+.awg span:nth-last-child(-n+4) { border-bottom: 0; }
+.awg.c3 { grid-template-columns: 1.3fr 1fr 1fr; }
+.awg.c3 span:nth-last-child(4) { border-bottom: 1px solid var(--line); }
 .rows.masks { margin-top: 0; }
 .big-label { font-size: 16px; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
 .alt { color: var(--muted); font-size: 18px; margin-top: 2px; }
@@ -555,7 +561,8 @@ var DEF = {
   hist: {},
   last: { conv: 1, ctrl: 7, ref: 5, robot: 4 }, // last page opened in each group
   c9: { k: "elec" },
-  c11: { mask: "255.255.255.0" }
+  c11: { mask: "255.255.255.0", ip: "" },
+  c14: { k: "unc" }
 };
 var KEY = "autotools-v1";
 var S = JSON.parse(JSON.stringify(DEF));
@@ -563,7 +570,7 @@ try {
   // Older versions saved under "convcalc-v1"; carry those values over
   var saved = JSON.parse(localStorage.getItem(KEY) || localStorage.getItem("convcalc-v1") || "null");
   if (saved) {
-    ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c11"].forEach(function (c) {
+    ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c11", "c14"].forEach(function (c) {
       if (saved[c]) for (var k in S[c]) if (k in saved[c]) S[c][k] = saved[c][k];
     });
     if (saved.tab) S.tab = saved.tab;
@@ -983,44 +990,75 @@ function parseMask(t) {
   for (var n = 0; n <= 32; n++) if (prefixToMask(n) === o.map(Number).join(".")) return n;
   return null; // the 1s aren't all on the left, e.g. 255.0.255.0
 }
-function subnetResult(n) {
+function maskBits(n) { return n ? (0xffffffff << (32 - n)) >>> 0 : 0; }
+function ipText(u) { return [u >>> 24, (u >>> 16) & 255, (u >>> 8) & 255, u & 255].join("."); }
+// Reads "192.168.1.50". Returns { u } or null. The prefix only comes from the mask box.
+function parseIP(t) {
+  var m = t.trim().match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!m || [1, 2, 3, 4].some(function (k) { return Number(m[k]) > 255; })) return null;
+  return { u: ((Number(m[1]) << 24) | (Number(m[2]) << 16) | (Number(m[3]) << 8) | Number(m[4])) >>> 0 };
+}
+function row(k, v) { return '<div class="row"><span class="k">' + k + '</span><span class="v">' + v + "</span></div>"; }
+function subnetResult(n, ip) {
   if (n === null) return '<p class="err">Not a valid subnet mask</p>';
   var hosts = n >= 31 ? (n === 31 ? 2 : 1) : Math.pow(2, 32 - n) - 2;
-  return '<div class="big-label">Prefix</div><div class="big">/' + n + "</div>" +
-    '<div class="alt">' + prefixToMask(n) + "</div>" +
-    '<div class="rows"><div class="row"><span class="k">Usable hosts</span><span class="v">' +
-    hosts.toLocaleString() + '</span></div><div class="row"><span class="k">Wildcard</span><span class="v">' +
-    prefixToMask(n).split(".").map(function (x) { return 255 - x; }).join(".") + "</span></div></div>";
+  var h = '<div class="big-label">Prefix</div><div class="big">/' + n + "</div>" +
+    '<div class="alt">' + prefixToMask(n) + '</div><div class="rows">';
+  if (ip) {
+    var net = (ip.u & maskBits(n)) >>> 0, bc = (net | ~maskBits(n)) >>> 0;
+    // /31 links use both addresses; /32 is a single host
+    var first = n >= 31 ? net : net + 1, last = n >= 31 ? bc : bc - 1;
+    h += row("Network", ipText(net)) + row("First host", ipText(first)) + row("Last host", ipText(last)) +
+      (n < 31 ? row("Broadcast", ipText(bc)) : "");
+  }
+  return h + row("Usable hosts", hosts.toLocaleString()) +
+    row("Wildcard", prefixToMask(n).split(".").map(function (x) { return 255 - x; }).join(".")) + "</div>";
 }
-function renderSubnet() {
-  var card = document.createElement("div");
-  card.className = "card";
+// A plain text box (standard keyboard) with a label
+function textBox(label, value, ph) {
   var lab = document.createElement("label");
   lab.className = "field";
-  lab.innerHTML = "<span>Subnet mask or /prefix</span>";
+  lab.innerHTML = "<span>" + label + "</span>";
   var wrap = document.createElement("div");
   wrap.className = "inwrap";
   var inp = document.createElement("input");
   inp.type = "text";
-  inp.inputMode = "decimal";
   inp.autocomplete = "off";
+  inp.autocapitalize = "off";
+  inp.spellcheck = false;
   inp.className = "paste";
-  inp.value = S.c11.mask;
+  inp.placeholder = ph || "";
+  inp.value = value;
+  inp.addEventListener("focus", function () { inp.select(); });
+  inp.addEventListener("keydown", function (e) { if (e.key === "Enter") inp.blur(); });
   wrap.appendChild(inp);
   lab.appendChild(wrap);
-  card.appendChild(lab);
+  return { lab: lab, inp: inp };
+}
+function renderSubnet() {
+  var card = document.createElement("div");
+  card.className = "card";
+  var ipBox = textBox("IP address (optional)", S.c11.ip, "192.168.1.50");
+  var mBox = textBox("Subnet mask or /prefix", S.c11.mask);
+  card.appendChild(ipBox.lab);
+  card.appendChild(mBox.lab);
   var out = document.createElement("div");
   out.className = "subout";
   card.appendChild(out);
   function show() {
-    var n = parseMask(inp.value);
-    inp.classList.toggle("bad", n === null && inp.value.trim() !== "");
-    out.innerHTML = inp.value.trim() === "" ? "" : subnetResult(n);
-    setBar(n === null ? ["", ""] : ["Prefix", "/" + n]);
+    var ipT = ipBox.inp.value.trim(), ip = ipT ? parseIP(ipT) : null;
+    ipBox.inp.classList.toggle("bad", !!ipT && !ip);
+    var n = parseMask(mBox.inp.value), blank = /^\/?$/.test(mBox.inp.value.trim()); // nothing typed yet
+    mBox.inp.classList.toggle("bad", n === null && !blank);
+    out.innerHTML = (ipT && !ip ? '<p class="err">' + (ipT.indexOf("/") >= 0 ? "Put the /prefix in the mask box" :
+      "Not a valid IP address") + "</p>" : "") +
+      (blank ? "" : subnetResult(n, ip));
   }
-  inp.addEventListener("focus", function () { inp.select(); });
-  inp.addEventListener("keydown", function (e) { if (e.key === "Enter") inp.blur(); });
-  inp.addEventListener("input", function () { S.c11.mask = inp.value; save(); show(); });
+  ipBox.inp.addEventListener("input", function () {
+    S.c11.ip = ipBox.inp.value;
+    save(); show();
+  });
+  mBox.inp.addEventListener("input", function () { S.c11.mask = mBox.inp.value; save(); show(); });
   app.appendChild(card);
 
   // Common masks; tap one to fill the box
@@ -1035,19 +1073,99 @@ function renderSubnet() {
   ref.onclick = function (e) {
     var r = e.target.closest("[data-m]");
     if (!r) return;
-    inp.value = S.c11.mask = r.dataset.m;
+    mBox.inp.value = S.c11.mask = r.dataset.m;
     save(); show(); window.scrollTo(0, 0);
   };
   app.appendChild(ref);
   show();
+  setBar(["", ""]);
+}
+
+// ---- AWG tab: wire sizes, metric equivalents and typical current ----
+// [size, gauge number (1/0 = 0, 2/0 = -1, 4/0 = -3), nearest metric size mm2, typical max amps]
+var AWG = [
+  ["22", 22, "0.34", 3], ["20", 20, "0.5", 5], ["18", 18, "0.75", 7], ["16", 16, "1.5", 10],
+  ["14", 14, "2.5", 15], ["12", 12, "4", 20], ["10", 10, "6", 30], ["8", 8, "10", 50],
+  ["6", 6, "16", 65], ["4", 4, "25", 85], ["2", 2, "35", 115], ["1/0", 0, "50", 150],
+  ["2/0", -1, "70", 175], ["4/0", -3, "120", 230]
+];
+function renderAWG() {
+  var card = document.createElement("div");
+  card.className = "card";
+  var t = '<div class="awg"><b>AWG</b><b>mm²</b><b>Metric</b><b>Amps</b>';
+  AWG.forEach(function (w) {
+    var d = 0.127 * Math.pow(92, (36 - w[1]) / 39); // diameter in mm
+    var a = Math.PI / 4 * d * d;
+    t += "<span>" + w[0] + "</span><span>" + (a < 10 ? a.toFixed(2) : a.toFixed(1)) + "</span><span>" + w[2] +
+      "</span><span>" + w[3] + "</span>";
+  });
+  card.innerHTML = t + "</div>";
+  app.appendChild(card);
+  var about = document.createElement("details");
+  about.className = "card about";
+  about.open = true;
+  about.innerHTML = "<summary>Notes</summary>" +
+    "<p><b>mm²</b> is the actual copper area of the AWG size. <b>Metric</b> is the closest standard metric " +
+    "size. A few (20, 18 and 1/0 AWG) are slightly smaller, so check ampacity if you swap.</p>" +
+    "<p><b>Amps</b> is a guide for copper wire: 22–10 AWG use typical machine wiring limits (NFPA 79); " +
+    "8 AWG and up use NEC 75 °C with 3 or fewer current-carrying wires.</p>" +
+    "<p>Derate for heat, bundled wires and long runs. Always check the code and the drawing that apply to your job.</p>";
+  app.appendChild(about);
+  setBar(["", ""]);
+}
+
+// ---- Tap drill tab: drill size for each thread (about 75% thread) ----
+// [thread, drill, drill size in inches]
+var TAPS = {
+  unc: [["#2-56", "#50", .070], ["#4-40", "#43", .089], ["#5-40", "#38", .1015], ["#6-32", "#36", .1065],
+    ["#8-32", "#29", .136], ["#10-24", "#25", .1495], ["#12-24", "#16", .177], ["1/4-20", "#7", .201],
+    ["5/16-18", "F", .257], ["3/8-16", "5/16", .3125], ["7/16-14", "U", .368], ["1/2-13", "27/64", .4219],
+    ["9/16-12", "31/64", .4844], ["5/8-11", "17/32", .5313], ["3/4-10", "21/32", .6563], ["7/8-9", "49/64", .7656],
+    ["1-8", "7/8", .875]],
+  unf: [["#0-80", "3/64", .0469], ["#2-64", "#50", .070], ["#4-48", "#42", .0935], ["#5-44", "#37", .104],
+    ["#6-40", "#33", .113], ["#8-36", "#29", .136], ["#10-32", "#21", .159], ["#12-28", "#14", .182],
+    ["1/4-28", "#3", .213], ["5/16-24", "I", .272], ["3/8-24", "Q", .332], ["7/16-20", "25/64", .3906],
+    ["1/2-20", "29/64", .4531], ["9/16-18", "33/64", .5156], ["5/8-18", "37/64", .5781], ["3/4-16", "11/16", .6875],
+    ["7/8-14", "13/16", .8125], ["1-12", "59/64", .9219]],
+  // metric: drill = size - pitch
+  m: [["M2 x 0.4", 1.6], ["M2.5 x 0.45", 2.05], ["M3 x 0.5", 2.5], ["M4 x 0.7", 3.3], ["M5 x 0.8", 4.2],
+    ["M6 x 1", 5], ["M8 x 1.25", 6.8], ["M8 x 1 fine", 7], ["M10 x 1.5", 8.5], ["M10 x 1.25 fine", 8.8],
+    ["M12 x 1.75", 10.2], ["M12 x 1.5 fine", 10.5], ["M14 x 2", 12], ["M16 x 2", 14], ["M16 x 1.5 fine", 14.5],
+    ["M20 x 2.5", 17.5], ["M24 x 3", 21]]
+};
+function renderTap() {
+  var card = document.createElement("div");
+  card.className = "card";
+  card.appendChild(seg("Thread", [["unc", "UNC"], ["unf", "UNF"], ["m", "Metric"]], S.c14.k, function (v) {
+    S.c14.k = v; save(); render();
+  }));
+  var metric = S.c14.k === "m";
+  var t = '<div class="awg c3"><b>Thread</b><b>Drill</b><b>' + (metric ? "Inch" : "Decimal") + "</b>";
+  TAPS[S.c14.k].forEach(function (r) {
+    if (metric) t += "<span>" + r[0] + "</span><span>" + r[1] + " mm</span><span>" + (r[1] / MM).toFixed(4).slice(1) + "</span>";
+    else t += "<span>" + r[0] + "</span><span>" + r[1] + "</span><span>" + r[2].toFixed(4).slice(1) + "</span>";
+  });
+  var box = document.createElement("div");
+  box.innerHTML = t + "</div>";
+  card.appendChild(box);
+  app.appendChild(card);
+  var about = document.createElement("details");
+  about.className = "card about";
+  about.open = true;
+  about.innerHTML = "<summary>Notes</summary>" +
+    "<p>Drill sizes give about 75% thread, the usual choice for cut taps in steel and aluminum.</p>" +
+    "<p>Form (roll) taps need a bigger drill; check the tap maker's chart.</p>" +
+    "<p>Metric tap drill = thread size − pitch. For example M6 x 1: 6 − 1 = 5 mm.</p>";
+  app.appendChild(about);
+  setBar(["", ""]);
 }
 
 // Tools are grouped; the bottom bar picks the group, the strip under the
 // header picks the page within it
 var GROUPS = {
   conv: [[1, "Speed"], [2, "Sensor"], [3, "Gap"], [6, "Drive"]],
-  ctrl: [[7, "Analog"], [8, "Encoder"]],
-  ref: [[5, "Wires"], [9, "Symbols"], [11, "Subnet"]],
+  ctrl: [[7, "Analog"], [8, "Encoder"], [11, "IP/Subnet"]],
+  ref: [[5, "Wires"], [9, "Symbols"], [12, "AWG"], [14, "Tap drill"]],
   robot: [[4, "Orientation"]]
 };
 function groupOf(t) {
@@ -1337,6 +1455,7 @@ function renderSymbols() {
 function render() {
   // The old Valves page now lives on the Symbols page
   if (S.tab === 10) { S.tab = 9; S.c9.k = "valves"; }
+  if (S.tab === 13) S.tab = 7; // the AI wiring page was removed
   for (var g in S.last) if (S.last[g] === 10 || groupOf(S.last[g]) !== g) S.last[g] = DEF.last[g];
   invalid = {};
   clearTimeout(histT);
@@ -1362,6 +1481,8 @@ function render() {
   if (S.tab === 5) { renderWires(); return; }
   if (S.tab === 9) { renderSymbols(); return; }
   if (S.tab === 11) { renderSubnet(); return; }
+  if (S.tab === 12) { renderAWG(); return; }
+  if (S.tab === 14) { renderTap(); return; }
   var c = "c" + S.tab;
   var card = document.createElement("div");
   card.className = "card";
