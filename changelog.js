@@ -1,6 +1,10 @@
 // What's New. Add a new entry at the top with every version (same number as version.js).
 // Keep each line short and in plain words: what changed for the person using the app.
 var CHANGELOG = [
+  { v: "v83", d: "10/18/2026", n: [
+    "Belt speeds always stay in FPM; the Length Units switch changes lengths only",
+    "Data Types page has a Studio 5000 Data Types heading"
+  ] },
   { v: "v82", d: "10/18/2026", n: [
     "New Timer page under Controls: turn ms, seconds, minutes (MM:SS), hours (HH:MM:SS) or days (DD:HH:MM:SS) into a Logix .PRE",
     "New Data Types page under Reference: Studio 5000 number sizes and ranges",

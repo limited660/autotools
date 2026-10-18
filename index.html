@@ -1009,18 +1009,15 @@ function sigRange() {
 var UNIT_TABS = ["c1", "c2", "c3", "c6", "c8"]; // pages with an inch / mm switch
 var SPEED_TABS = ["c1", "c2", "c6", "c8"]; // pages with a belt speed (FPM) box
 function kOf(c) { return S[c].u === "mm" ? 1 / MM : 1; } // inches per unit
-// Metric mode: the shared Units switch shows lengths in mm and belt speeds in m/min.
-// Speeds are always stored in FPM; only what's shown and typed changes.
+// The shared Units switch changes lengths only; belt speeds always stay in FPM.
 var M_PER_FT = 0.3048;
-function metric(c) { return !!S[c] && S[c].u === "mm"; }
 function isSpeed(f) { return f.unit === "FPM"; }
-function unitOf(c, f) { return f.len ? S[c].u : isSpeed(f) && metric(c) ? "m/min" : f.unit; }
-function spd(c, fpm) { return metric(c) ? fmt(fpm * M_PER_FT, 1) + " m/min" : fmt(fpm, 0) + " FPM"; }
+function unitOf(c, f) { return f.len ? S[c].u : f.unit; }
+function spd(c, fpm) { return fmt(fpm, 0) + " FPM"; }
 function shown(c, f) {
   var v = S[c][f.k];
   if (f.hms) return hmsShow(v, f.hms);
   if (f.raw) return String(v);
-  if (isSpeed(f) && metric(c)) return fmt(v * M_PER_FT, 1);
   return f.len ? fmt(v / kOf(c), 2) : fmt(v, f.d);
 }
 function qText() {
@@ -1145,7 +1142,7 @@ function fieldEl(c, f) {
       delete invalid[c + f.k];
       mark(false);
       // Conveyor tabs round entries to the shown decimals first (like the TI)
-      S[c][f.k] = f.raw ? v : f.len ? rnd(v, 2) * kOf(c) : isSpeed(f) && metric(c) ? rnd(v, 1) / M_PER_FT : rnd(v, f.d);
+      S[c][f.k] = f.raw ? v : f.len ? rnd(v, 2) * kOf(c) : rnd(v, f.d);
       // belt speed carries over between the pages that use it
       if (f.k === "f" && SPEED_TABS.indexOf(c) >= 0) SPEED_TABS.forEach(function (k) { S[k].f = S[c].f; });
       save();
@@ -1164,7 +1161,7 @@ function fieldEl(c, f) {
   wrap.appendChild(inp);
   wrap.appendChild(em);
   if (isSpeed(f)) {
-    // - / + buttons: tap to change by 1 (FPM or m/min), hold to keep going
+    // - / + buttons: tap to change by 1 (FPM), hold to keep going
     wrap.classList.add("stepper");
     [["down", "−", -1], ["up", "+", 1]].forEach(function (b) {
       var btn = document.createElement("button");
@@ -1174,9 +1171,8 @@ function fieldEl(c, f) {
       btn.setAttribute("aria-label", (b[2] > 0 ? "Increase " : "Decrease ") + f.label + " by 1");
       var hold, rep;
       function bump() {
-        var m = isSpeed(f) && metric(c), cur = m ? S[c][f.k] * M_PER_FT : S[c][f.k];
-        var v = Math.max(0, Math.round(cur) + b[2]);
-        inp.value = m ? fmt(v, 1) : fmt(v, 0);
+        var v = Math.max(0, Math.round(S[c][f.k]) + b[2]);
+        inp.value = fmt(v, 0);
         inp.dispatchEvent(new Event("input"));
         if (document.activeElement !== inp) inp.value = shown(c, f);
       }
@@ -1881,7 +1877,7 @@ var LOGIX_TYPES = [
 function renderTypes() {
   var card = document.createElement("div");
   card.className = "card";
-  card.innerHTML = LOGIX_TYPES.map(function (sec, i) {
+  card.innerHTML = '<p class="seg-label" style="margin-bottom: 14px">Studio 5000 Data Types</p>' + LOGIX_TYPES.map(function (sec, i) {
     return (i ? '<div class="secgap"></div>' : "") + '<h2 class="sechead">' + sec[0] + '</h2><div class="tl rapid">' +
       sec[1].map(function (r) {
         return "<div><code>" + r[0] + "</code><b class=\"typesz\">" + r[1] + "</b>" + (r[2] ? "<span>" + r[2] + "</span>" : "") + "</div>";
@@ -2453,7 +2449,7 @@ function renderPage() {
       S.c16.pu = v; save(); render();
     }));
   } else {
-    card.appendChild(seg("Units", [["in", "Inches / FPM"], ["mm", "Metric"]], S[c].u, function (v) {
+    card.appendChild(seg("Length Units", [["in", "Inches"], ["mm", "mm"]], S[c].u, function (v) {
       UNIT_TABS.forEach(function (k) { S[k].u = v; }); // every page follows
       save(); render();
     }));
@@ -2730,8 +2726,7 @@ function renderResults() {
     var p = S.c1.L + S.c1.g;
     if (S.c1.m === "spd") {
       var f = rnd(S.c1.r * p / 12, 0);
-      h += metric("c1") ? big("Speed", fmt(f * M_PER_FT, 1), "m/min", fmt(f, 0) + " FPM")
-        : big("Speed", fmt(f, 0), "FPM", fmt(f * M_PER_FT, 1) + " m/min");
+      h += big("Speed", fmt(f, 0), "FPM", fmt(f * M_PER_FT, 1) + " m/min");
       sum = ["Speed", spd("c1", f)];
     } else {
       if (p === 0) return stop();
@@ -2762,8 +2757,7 @@ function renderResults() {
       var F = (s.L + s.gw) / (s.L + s.gA);
       var v = s.adj === "B" ? s.a * F : s.b / F;
       var g3 = dual("c3", s.gw - s.gA);
-      h += metric("c3") ? big("Set Speed " + s.adj + " to", fmt(v * M_PER_FT, 1), "m/min", fmt(v, 0) + " FPM")
-        : big("Set Speed " + s.adj + " to", fmt(v, 0), "FPM", fmt(v * M_PER_FT, 1) + " m/min");
+      h += big("Set Speed " + s.adj + " to", fmt(v, 0), "FPM");
       h += '<div class="rows">' + row("Added", g3[0], g3[1], g3[0]) +
         row("Factor (B/A)", fmt(F, 4)) + "</div>";
       sum = ["Set " + s.adj + " to", spd("c3", v)];
@@ -2772,11 +2766,10 @@ function renderResults() {
     var d6 = S.c6;
     if (d6.hz0 === 0 || d6.ratio === 0) return stop();
     var perHz = d6.rpm / d6.hz0 / d6.ratio * Math.PI * d6.D / 12; // FPM per Hz
-    var perHzRow = metric("c6") ? row("m/min per Hz", fmt(perHz * M_PER_FT, 3)) : row("FPM per Hz", fmt(perHz, 2));
+    var perHzRow = row("FPM per Hz", fmt(perHz, 2));
     if (d6.m === "fpm") {
       var mr = d6.rpm * d6.hz / d6.hz0, fp = rnd(mr / d6.ratio * Math.PI * d6.D / 12, 0);
-      h += metric("c6") ? big("Belt Speed", fmt(fp * M_PER_FT, 1), "m/min", fmt(fp, 0) + " FPM")
-        : big("Belt Speed", fmt(fp, 0), "FPM", fmt(fp * M_PER_FT, 1) + " m/min");
+      h += big("Belt Speed", fmt(fp, 0), "FPM", fmt(fp * M_PER_FT, 1) + " m/min");
       h += '<div class="rows">' + row("Motor Speed", fmt(mr, 0) + " RPM") +
         row("Gearbox Output", fmt(mr / d6.ratio, 1) + " RPM") +
         perHzRow + "</div>";
