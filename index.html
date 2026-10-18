@@ -678,6 +678,10 @@ header h1 small { display: block; font-size: 12px; font-weight: 700; letter-spac
 #pages .track { background: transparent; padding: 0; gap: 4px; border-bottom: 1px solid var(--line); border-radius: 0; }
 #pages button { color: var(--muted); opacity: 1; border-radius: 0; border-bottom: 3px solid transparent; min-height: 40px; }
 #pages button[aria-selected="true"] { background: transparent; color: var(--text); border-bottom-color: var(--accent); }
+@media (max-width: 899px) {
+  #pages .track.wrap { display: grid; grid-template-columns: repeat(4, 1fr); row-gap: 2px; }
+  #pages .track.wrap button { min-height: 36px; white-space: nowrap; }
+}
 
 /* ---- Cards: no outlines, soft shadow, rounder ---- */
 main { padding-top: 6px; }
@@ -862,7 +866,8 @@ var DEF = {
   c18: { x: 600, y: 0, z: 800, ax: 0, ay: 180, az: 0, dx: 0, dy: 0, dz: 100, rx: 0, ry: 0, rz: 0 },
   c19: { k: "speed" },
   c21: { tu: "s", t: 2.5 }, // timer preset: time and its unit
-  c20: { k: "move" }
+  c20: { k: "move" },
+  c23: { k: "bit" }
 };
 var KEY = "autotools-v1";
 var S = JSON.parse(JSON.stringify(DEF));
@@ -870,7 +875,7 @@ try {
   // Older versions saved under "convcalc-v1"; carry those values over
   var saved = JSON.parse(localStorage.getItem(KEY) || localStorage.getItem("convcalc-v1") || "null");
   if (saved) {
-    ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c11", "c14", "c15", "c16", "c18", "c19", "c20", "c21"].forEach(function (c) {
+    ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c11", "c14", "c15", "c16", "c18", "c19", "c20", "c21", "c23"].forEach(function (c) {
       if (saved[c]) for (var k in S[c]) if (k in saved[c]) S[c][k] = saved[c][k];
     });
     if (saved.tab) S.tab = saved.tab;
@@ -1957,12 +1962,87 @@ function renderRapid() {
   setBar(["", ""]);
 }
 
+// ---- Instructions tab: common Studio 5000 ladder instructions ----
+// [instruction, what it does and what to watch for]
+var LOGIX_INSTR = {
+  bit: [
+    ["XIC", "Examine If Closed: true when the bit is 1."],
+    ["XIO", "Examine If Open: true when the bit is 0."],
+    ["OTE", "Output Energize: the bit follows the rung. Use each OTE bit only once, or the last rung wins."],
+    ["OTL / OTU", "Latch and Unlatch: the bit stays set until unlatched, even through a power cycle."],
+    ["ONS", "One Shot: goes mid-rung and lets the rest of the rung be true for one scan. Best when the pulse is only needed on that rung."],
+    ["OSR / OSF", "One Shot Rising / Falling: goes at the end of the rung and sets an output bit for one scan. Use it when other rungs need the pulse, or for a falling edge."],
+    ["Tip", "Every one-shot needs its own storage bit that nothing else uses."],
+    ["Tip", "Bits in a DINT are written Tag.5; a BOOL array is written Tag[5]."]
+  ],
+  timer: [
+    ["TON", "Timer On Delay: .DN turns on after .PRE ms of a true rung. Resets when the rung goes false."],
+    ["TOF", "Timer Off Delay: .DN stays on for .PRE ms after the rung goes false."],
+    ["RTO", "Retentive Timer On: keeps .ACC when the rung goes false. Needs a RES to clear it."],
+    ["CTU / CTD", "Count Up / Down on each false-to-true change. .DN is on when .ACC is at or above .PRE."],
+    ["RES", "Reset: clears .ACC and the status bits of a timer or counter."],
+    ["TONR / TOFR / RTOR", "Timers with built-in reset, for Function Block and Structured Text."],
+    ["Tip", ".PRE and .ACC are in ms (DINT). The Timer page turns a time into a preset."]
+  ],
+  math: [
+    ["MOV", "Move: copies a value to a tag, converting the type if needed."],
+    ["COP", "Copy: copies bytes from one tag or array to another. Length is in elements of the destination."],
+    ["CPS", "Synchronous Copy: like COP, but the data can't change mid-copy. Use for I/O and produced/consumed tags."],
+    ["CLR", "Clear: sets a tag to 0."],
+    ["ADD / SUB / MUL / DIV", "Basic math. DIV into an integer rounds the result; divide by 0 sets a minor fault."],
+    ["CPT", "Compute: one formula on one line, like (A + B) * 2."],
+    ["SCP", "Scale with Parameters: turns raw counts into engineering units. The Analog page works out the numbers."],
+    ["MOD", "Remainder after division."]
+  ],
+  compare: [
+    ["EQU / NEQ", "Equal / Not Equal. Avoid EQU on REAL values; small rounding makes them miss."],
+    ["GRT / GEQ", "Greater Than / Greater Than or Equal."],
+    ["LES / LEQ", "Less Than / Less Than or Equal."],
+    ["LIM", "Limit: true when a value is between Low and High."],
+    ["CMP", "Compare: any comparison written as an expression, like A > B AND C < 10."],
+    ["MEQ", "Masked Equal: compares only the bits picked by a mask."]
+  ],
+  program: [
+    ["JSR / RET / SBR", "Jump to Subroutine, Return and Subroutine: run another routine and pass values in and out."],
+    ["AFI", "Always False: disables a rung. Handy for testing; don't leave it in."],
+    ["NOP", "No Operation: does nothing; a placeholder."],
+    ["MSG", "Message: reads or writes data in another controller or device. Trigger it once and wait for .DN or .ER."],
+    ["GSV / SSV", "Get / Set System Value: reads or writes controller data such as the wall clock time or a module fault."],
+    ["FLL", "File Fill: fills an array with one value."],
+    ["FAL / FSC", "File Arithmetic and File Search: work through an array one element at a time."],
+    ["Tip", "A tag used by an instruction in two tasks at once can change mid-scan. Copy it with CPS first."]
+  ]
+};
+var LOGIX_KINDS = [["bit", "Bit"], ["timer", "Timers"], ["math", "Math"], ["compare", "Compare"], ["program", "Program"]];
+function renderInstr() {
+  var card = document.createElement("div");
+  card.className = "card";
+  if (!LOGIX_INSTR[S.c23.k]) S.c23.k = "bit";
+  card.appendChild(seg("Logix Instructions", LOGIX_KINDS, S.c23.k, function (v) {
+    S.c23.k = v; save(); render();
+  }));
+  var box = document.createElement("div");
+  box.className = "swipebox"; // slides on its own when swiping between choices
+  box.innerHTML = '<div class="tl rapid">' + LOGIX_INSTR[S.c23.k].map(function (r) {
+    return "<div><code>" + r[0] + "</code><span>" + r[1] + "</span></div>";
+  }).join("") + "</div>";
+  card.appendChild(box);
+  app.appendChild(card);
+  var about = document.createElement("details");
+  about.className = "card about";
+  about.innerHTML = "<summary>Notes</summary>" +
+    "<p>Short reminders of the Studio 5000 instructions used most, not the full syntax. The Logix 5000 " +
+    "Instruction Set Reference Manual has every option.</p>";
+  app.appendChild(about);
+  setBar(["", ""]);
+}
+
 // Tools are grouped; the bottom bar picks the group, the strip under the
 // header picks the page within it
 var GROUPS = {
   conv: [[1, "Conveyor PPM"], [2, "Sensor Timing"], [3, "Pack Gapping"], [6, "VFD"]],
   ctrl: [[7, "Analog"], [8, "Encoder"], [21, "Timer"], [11, "IP/Subnet"], [16, "Motor FLA"]],
-  ref: [[5, "Wiring"], [12, "AWG"], [9, "Symbols"], [14, "Tap Drill"], [15, "PF525"], [22, "Data Types"]],
+  ref: [[5, "Wiring"], [12, "AWG"], [9, "Symbols"], [14, "Tap Drill"], [15, "PF525"], [22, "Data Types"], [23, "Instructions"]],
   robot: [[4, "Orientation"], [18, "Offsets"], [19, "Speed Zone"], [20, "RAPID"]]
 };
 // ---- Favorites: starred pages gathered into their own group (page 0 is the empty Favorites page) ----
@@ -2340,13 +2420,14 @@ function renderPage() {
   var pages = document.getElementById("pages");
   pages.innerHTML = "";
   var track = document.createElement("div"); // one shaded bar holding the tabs
-  track.className = "track";
+  track.className = GROUPS[grp].length > 5 ? "track wrap" : "track"; // 6+ tabs: two rows on a phone
   if (GROUPS[grp].length > 1) pages.appendChild(track);
   GROUPS[grp].forEach(function (pg) {
     var b = document.createElement("button");
     b.type = "button";
     b.setAttribute("role", "tab");
-    b.innerHTML = pg[1].replace(" ", "<br>"); // two-word names go on two rows
+    // two-word names go on two rows, except when the tabs themselves wrap to two rows
+    b.innerHTML = GROUPS[grp].length > 5 ? pg[1] : pg[1].replace(" ", "<br>");
     b.setAttribute("aria-selected", String(pg[0] === S.tab));
     b.onclick = function () { openTab(pg[0]); };
     track.appendChild(b);
@@ -2368,6 +2449,7 @@ function renderPage() {
   if (S.tab === 15) { renderPF(); return; }
   if (S.tab === 19) { renderSpeedZone(); return; }
   if (S.tab === 22) { renderTypes(); return; }
+  if (S.tab === 23) { renderInstr(); return; }
   if (S.tab === 20) { renderRapid(); return; }
   var c = "c" + S.tab;
   app.className = "calc";
@@ -3044,7 +3126,8 @@ var SWIPE_SUBS = {
   14: ["c14", "k", ["unc", "unf", "m", "chart"]],
   15: ["c15", "k", ["par", "flt"]],
   19: ["c19", "k", ["speed", "zone"]],
-  20: ["c20", "k", ["move", "io", "points", "data"]]
+  20: ["c20", "k", ["move", "io", "points", "data"]],
+  23: ["c23", "k", ["bit", "timer", "math", "compare", "program"]]
 };
 var GROUP_ORDER = ["fav", "conv", "ctrl", "ref", "robot"];
 var GROUP_NAMES = { fav: "Favorites", conv: "Conveyor", ctrl: "Controls", ref: "Reference", robot: "ABB Robot" };
@@ -3170,6 +3253,11 @@ function buildSearch() {
   });
   [["move", "Motion"], ["io", "I/O"], ["points", "Points"], ["data", "Data"]].forEach(function (k) {
     RAPID[k[0]].forEach(function (r) { add(r[0], r[1], "RAPID · " + k[1], 20, function () { S.c20.k = k[0]; }); });
+  });
+  LOGIX_KINDS.forEach(function (k) {
+    LOGIX_INSTR[k[0]].forEach(function (r) {
+      if (r[0] !== "Tip") add(r[0], r[1], "Instructions · " + k[1], 23, function () { S.c23.k = k[0]; });
+    });
   });
   LOGIX_TYPES.forEach(function (sec) {
     sec[1].forEach(function (r) { add(r[0], r[1] + (r[2] ? " · " + r[2] : ""), "Data Types · " + sec[0], 22, function () {}); });

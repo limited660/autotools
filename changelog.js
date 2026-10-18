@@ -1,6 +1,10 @@
 // What's New. Add a new entry at the top with every version (same number as version.js).
 // Keep each line short and in plain words: what changed for the person using the app.
 var CHANGELOG = [
+  { v: "v84", d: "10/18/2026", n: [
+    "New Instructions page under Reference: common Studio 5000 ladder instructions, with when to use ONS or OSR",
+    "Reference tabs sit in two rows on a phone so every name fits"
+  ] },
   { v: "v83", d: "10/18/2026", n: [
     "Belt speeds always stay in FPM; the Length Units switch changes lengths only",
     "Data Types page has a Studio 5000 Data Types heading"
