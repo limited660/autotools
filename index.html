@@ -1882,7 +1882,7 @@ var LOGIX_TYPES = [
 function renderTypes() {
   var card = document.createElement("div");
   card.className = "card";
-  card.innerHTML = '<p class="seg-label" style="margin-bottom: 14px">Studio 5000 Data Types</p>' + LOGIX_TYPES.map(function (sec, i) {
+  card.innerHTML = '<p class="seg-label" style="margin-bottom: 14px">Logix Data Types</p>' + LOGIX_TYPES.map(function (sec, i) {
     return (i ? '<div class="secgap"></div>' : "") + '<h2 class="sechead">' + sec[0] + '</h2><div class="tl rapid">' +
       sec[1].map(function (r) {
         return "<div><code>" + r[0] + "</code><b class=\"typesz\">" + r[1] + "</b>" + (r[2] ? "<span>" + r[2] + "</span>" : "") + "</div>";
