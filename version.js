@@ -1,5 +1,5 @@
 // The one place to set the app version. Bump it (and update the date)
 // whenever any file changes: phones then download the new copy, and the
 // footer shows it.
-var APP_VERSION = "v81";
-var APP_DATE = "10/17/2026";
+var APP_VERSION = "v82";
+var APP_DATE = "10/18/2026";

@@ -554,6 +554,7 @@ html.nozoom #app { touch-action: pan-y; }
   border-bottom: 1px solid var(--line); text-align: left; }
 .pf > div:last-child { border-bottom: 0; }
 .pf b { color: var(--accent-ink); font-size: 16px; grid-row: span 2; }
+.tl b.typesz { font-size: 14px; margin-top: 2px; }
 .tl.rapid code { display: block; font: 600 14px/1.35 Consolas, "Courier New", monospace; color: var(--accent-ink, var(--accent));
   word-break: break-word; }
 .tl > div { padding: 9px 0; border-bottom: 1px solid var(--line); text-align: left; }
@@ -615,6 +616,26 @@ html.nozoom #app { touch-action: pan-y; }
 #star.on { color: var(--accent-ink, var(--accent)); }
 #star[hidden] { display: none; }
 .favempty { text-align: center; }
+#find { border: 0; background: var(--card); color: var(--text); box-shadow: var(--shadow); border-radius: 999px;
+  width: 36px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+#srch { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.5); display: flex; align-items: flex-start; touch-action: none; }
+#srch[hidden] { display: none; }
+.srchsheet { width: 100%; max-width: 560px; max-height: 92vh; margin: 0 auto; overflow-y: auto; overscroll-behavior: contain;
+  touch-action: pan-y; background: var(--card); border-radius: 0 0 16px 16px;
+  padding: calc(12px + env(safe-area-inset-top)) 14px 14px; }
+.srchhead { display: flex; gap: 8px; position: sticky; top: 0; background: var(--card); padding-bottom: 8px; }
+#srchin { flex: 1; min-width: 0; font: inherit; font-size: 17px; color: var(--text); background: var(--card2, var(--field));
+  border: 0; border-radius: 12px; padding: 11px 14px; }
+#srchin:focus { outline: 2px solid var(--accent); }
+#srchx { border: 1px solid var(--line); background: transparent; color: var(--text); border-radius: 10px; padding: 0 12px;
+  font-weight: 600; cursor: pointer; }
+.srchrow { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: transparent;
+  color: var(--text); padding: 10px 4px; cursor: pointer; }
+.srchrow b { display: block; font-size: 16px; }
+.srchrow span { display: block; color: var(--muted); font-size: 14px; line-height: 1.3; margin-top: 2px; }
+.srchrow small { display: block; color: var(--accent-ink, var(--accent)); font-size: 12px; font-weight: 700; margin-top: 3px; }
+.srchtip { color: var(--muted); text-align: center; margin: 14px 0; }
+.found { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 10px; transition: outline-color .3s; }
 .favempty b { display: block; font-size: 18px; margin-bottom: 6px; }
 .favempty p { margin: 0; color: var(--muted); }
 .warnrow { color: var(--error); font-weight: 600; font-size: 15px; margin-top: 10px; text-align: center; }
@@ -679,6 +700,7 @@ label.field .fielderr { grid-column: 1 / -1; text-align: left; margin: 2px 0 4px
 .inwrap input { background: var(--card); border: 0; border-radius: 11px; font-size: 20px; padding: 10px 44px 10px 10px; text-align: right; }
 .inwrap em { right: 10px; font-size: 13px; }
 .inwrap input.paste { text-align: center; padding: 10px; }
+.inwrap input.nounit { padding-right: 14px; }
 /* Fields with - / + buttons keep the full width */
 label.field:has(.stepper) { grid-template-columns: 1fr; row-gap: 6px; padding: 10px; }
 label.field:has(.stepper) > span { padding-left: 4px; }
@@ -751,13 +773,20 @@ footer { padding-bottom: calc(var(--nav-h) + 40px + env(safe-area-inset-bottom))
 <body>
 <header>
   <h1 id="title">Automation Tools</h1>
-  <div class="hbtns"><button id="star" type="button"></button><button id="theme" type="button"></button></div>
+  <div class="hbtns"><button id="find" type="button" aria-label="Search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></button><button id="star" type="button"></button><button id="theme" type="button"></button></div>
 </header>
 <div id="pages" role="tablist"></div>
 <div id="bar"></div>
 <main id="app"></main>
 <div id="upd" hidden><button id="updgo" type="button"></button><button id="updx" type="button" aria-label="Dismiss">&times;</button></div>
 <footer><button id="ver" type="button"></button></footer>
+<div id="srch" hidden>
+  <div class="srchsheet" role="dialog" aria-modal="true" aria-label="Search">
+    <div class="srchhead"><input id="srchin" type="search" placeholder="Search tools and reference" autocomplete="off" spellcheck="false">
+      <button id="srchx" type="button">Close</button></div>
+    <div id="srchres"></div>
+  </div>
+</div>
 <div id="log" hidden>
   <div class="logsheet" role="dialog" aria-modal="true" aria-labelledby="logtitle" tabindex="-1">
     <div class="loghead"><h2 id="logtitle">What's New</h2><button id="logx" type="button">Close</button></div>
@@ -832,6 +861,7 @@ var DEF = {
   // Offs / RelTool: a point pointing straight down (Y 180) moved 100 mm along Z
   c18: { x: 600, y: 0, z: 800, ax: 0, ay: 180, az: 0, dx: 0, dy: 0, dz: 100, rx: 0, ry: 0, rz: 0 },
   c19: { k: "speed" },
+  c21: { tu: "s", t: 2.5 }, // timer preset: time and its unit
   c20: { k: "move" }
 };
 var KEY = "autotools-v1";
@@ -840,7 +870,7 @@ try {
   // Older versions saved under "convcalc-v1"; carry those values over
   var saved = JSON.parse(localStorage.getItem(KEY) || localStorage.getItem("convcalc-v1") || "null");
   if (saved) {
-    ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c11", "c14", "c15", "c16", "c18", "c19", "c20"].forEach(function (c) {
+    ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c11", "c14", "c15", "c16", "c18", "c19", "c20", "c21"].forEach(function (c) {
       if (saved[c]) for (var k in S[c]) if (k in saved[c]) S[c][k] = saved[c][k];
     });
     if (saved.tab) S.tab = saved.tab;
@@ -979,9 +1009,18 @@ function sigRange() {
 var UNIT_TABS = ["c1", "c2", "c3", "c6", "c8"]; // pages with an inch / mm switch
 var SPEED_TABS = ["c1", "c2", "c6", "c8"]; // pages with a belt speed (FPM) box
 function kOf(c) { return S[c].u === "mm" ? 1 / MM : 1; } // inches per unit
+// Metric mode: the shared Units switch shows lengths in mm and belt speeds in m/min.
+// Speeds are always stored in FPM; only what's shown and typed changes.
+var M_PER_FT = 0.3048;
+function metric(c) { return !!S[c] && S[c].u === "mm"; }
+function isSpeed(f) { return f.unit === "FPM"; }
+function unitOf(c, f) { return f.len ? S[c].u : isSpeed(f) && metric(c) ? "m/min" : f.unit; }
+function spd(c, fpm) { return metric(c) ? fmt(fpm * M_PER_FT, 1) + " m/min" : fmt(fpm, 0) + " FPM"; }
 function shown(c, f) {
   var v = S[c][f.k];
+  if (f.hms) return hmsShow(v, f.hms);
   if (f.raw) return String(v);
+  if (isSpeed(f) && metric(c)) return fmt(v * M_PER_FT, 1);
   return f.len ? fmt(v / kOf(c), 2) : fmt(v, f.d);
 }
 function qText() {
@@ -1068,21 +1107,24 @@ function fieldEl(c, f) {
   var lab = document.createElement("label");
   lab.className = "field";
   var sp = document.createElement("span");
-  sp.textContent = f.label;
+  sp.textContent = f.unitInLabel ? f.label + " (" + f.unit + ")" : f.label;
+  if (f.unitInLabel) sp.style.whiteSpace = "nowrap";
   var wrap = document.createElement("div");
   wrap.className = "inwrap";
   var inp = document.createElement("input");
   inp.type = "text";
-  inp.inputMode = "decimal";
+  inp.inputMode = f.hms ? "text" : "decimal"; // H:M:S needs the ":" key
+  if (f.unitInLabel) inp.classList.add("nounit"); // the unit is in the label, so the number sits at the right edge
   inp.enterKeyHint = "next";
   inp.autocomplete = "off";
   inp.dataset.k = f.k;
   inp.value = shown(c, f);
   var em = document.createElement("em");
-  em.textContent = f.len ? S[c].u : f.unit;
+  em.textContent = f.unitInLabel ? "" : unitOf(c, f);
   var msg = document.createElement("div");
   msg.className = "fielderr";
-  msg.textContent = f.min !== undefined ? "Enter " + f.min + " to " + f.max :
+  msg.textContent = f.hms ? (f.hms === "d" ? "Enter DD:HH:MM:SS, like 01:12:00:00" : f.hms === "h" ? "Enter HH:MM:SS, like 01:30:00" : "Enter MM:SS, like 02:30") :
+    f.min !== undefined ? "Enter " + f.min + " to " + f.max :
     f.neg ? "Enter a number" : "Enter a number of 0 or more";
   function mark(bad) {
     inp.classList.toggle("bad", bad);
@@ -1094,7 +1136,8 @@ function fieldEl(c, f) {
   });
   inp.addEventListener("input", function () {
     var t = inp.value.trim();
-    var v = Number(t);
+    var v = f.hms ? hmsParse(t, f.hms) : Number(t);
+    if (v === null) v = NaN;
     if (t === "" || !isFinite(v) || (v < 0 && !f.neg) || (f.min !== undefined && (v < f.min || v > f.max))) {
       invalid[c + f.k] = true;
       mark(true);
@@ -1102,7 +1145,7 @@ function fieldEl(c, f) {
       delete invalid[c + f.k];
       mark(false);
       // Conveyor tabs round entries to the shown decimals first (like the TI)
-      S[c][f.k] = f.raw ? v : f.len ? rnd(v, 2) * kOf(c) : rnd(v, f.d);
+      S[c][f.k] = f.raw ? v : f.len ? rnd(v, 2) * kOf(c) : isSpeed(f) && metric(c) ? rnd(v, 1) / M_PER_FT : rnd(v, f.d);
       // belt speed carries over between the pages that use it
       if (f.k === "f" && SPEED_TABS.indexOf(c) >= 0) SPEED_TABS.forEach(function (k) { S[k].f = S[c].f; });
       save();
@@ -1120,8 +1163,8 @@ function fieldEl(c, f) {
   });
   wrap.appendChild(inp);
   wrap.appendChild(em);
-  if (f.unit === "FPM") {
-    // - / + buttons: tap to change by 1 FPM, hold to keep going
+  if (isSpeed(f)) {
+    // - / + buttons: tap to change by 1 (FPM or m/min), hold to keep going
     wrap.classList.add("stepper");
     [["down", "−", -1], ["up", "+", 1]].forEach(function (b) {
       var btn = document.createElement("button");
@@ -1131,8 +1174,9 @@ function fieldEl(c, f) {
       btn.setAttribute("aria-label", (b[2] > 0 ? "Increase " : "Decrease ") + f.label + " by 1");
       var hold, rep;
       function bump() {
-        var v = Math.max(0, S[c][f.k] + b[2]);
-        inp.value = fmt(v, 0);
+        var m = isSpeed(f) && metric(c), cur = m ? S[c][f.k] * M_PER_FT : S[c][f.k];
+        var v = Math.max(0, Math.round(cur) + b[2]);
+        inp.value = m ? fmt(v, 1) : fmt(v, 0);
         inp.dispatchEvent(new Event("input"));
         if (document.activeElement !== inp) inp.value = shown(c, f);
       }
@@ -1168,6 +1212,24 @@ function fieldEl(c, f) {
   lab.appendChild(wrap);
   lab.appendChild(msg);
   return lab;
+}
+
+// Timer: in Hours the Time box takes H:M:S, in Minutes it takes M:S (a plain number works too)
+function hmsParse(t, kind) {
+  var p = t.trim().split(":");
+  if (p.some(function (x) { return !/^\d+(\.\d+)?$/.test(x.trim()); })) return null;
+  p = p.map(Number);
+  if (kind === "d" && p.length <= 4) return p[0] + (p[1] || 0) / 24 + (p[2] || 0) / 1440 + (p[3] || 0) / 86400;
+  if (kind === "h" && p.length <= 3) return p[0] + (p[1] || 0) / 60 + (p[2] || 0) / 3600;
+  if (kind === "min" && p.length <= 2) return p[0] + (p[1] || 0) / 60;
+  return null;
+}
+function hmsShow(v, kind) { // days -> DD:HH:MM:SS, hours -> HH:MM:SS, minutes -> MM:SS
+  var sec = Math.round(v * { d: 86400, h: 3600, min: 60 }[kind] * 1000) / 1000;
+  var pad = function (n) { return (n < 10 ? "0" : "") + plain(n, 3); };
+  if (kind === "d") return pad(Math.floor(sec / 86400)) + ":" + pad(Math.floor(sec / 3600) % 24) + ":" + pad(Math.floor(sec / 60) % 60) + ":" + pad(sec % 60);
+  if (kind === "h") return pad(Math.floor(sec / 3600)) + ":" + pad(Math.floor(sec / 60) % 60) + ":" + pad(sec % 60);
+  return pad(Math.floor(sec / 60)) + ":" + pad(sec % 60);
 }
 
 // One box to paste a whole quaternion, e.g. [0.707107, 0, 0, 0.707107]
@@ -1235,6 +1297,8 @@ function eulerToQuat(xd, yd, zd) {
     sz * cy * cx - cz * sy * sx
   ];
 }
+// Timer presets: milliseconds in each time unit
+var TIME_MS = { ms: 1, s: 1000, min: 60000, h: 3600000, d: 86400000 };
 // Quaternion helpers for Offs / RelTool ([q1, q2, q3, q4] with q1 the scalar, like ABB)
 function qMul(a, b) {
   return [a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3],
@@ -1781,6 +1845,58 @@ function renderSpeedZone() {
   setBar(["", ""]);
 }
 
+// ---- Data Types tab: Studio 5000 (Logix) data types, sizes and ranges ----
+// [type, size and range, notes]
+var LOGIX_TYPES = [
+  ["Integers", [
+    ["BOOL", "1 bit · 0 or 1", "A tag of its own takes 4 bytes; use DINT bits (MyDint.5) to pack them."],
+    ["SINT", "8-bit · −128 to 127", ""],
+    ["INT", "16-bit · −32,768 to 32,767", "Common for analog cards and Modbus registers."],
+    ["DINT", "32-bit · −2,147,483,648 to 2,147,483,647", "The native size: fastest, and what timers, counters and most instructions use."],
+    ["LINT", "64-bit · about ±9.22 × 10¹⁸", "Mostly for time stamps; fewer instructions accept it."]
+  ]],
+  ["Unsigned (firmware v32 and later)", [
+    ["USINT", "8-bit · 0 to 255", ""],
+    ["UINT", "16-bit · 0 to 65,535", ""],
+    ["UDINT", "32-bit · 0 to 4,294,967,295", ""],
+    ["ULINT", "64-bit · 0 to about 1.84 × 10¹⁹", ""]
+  ]],
+  ["Decimal", [
+    ["REAL", "32-bit · ±3.4 × 10³⁸", "About 7 significant digits, so large totals lose small steps. Never compare two REALs with EQU."],
+    ["LREAL", "64-bit · ±1.8 × 10³⁰⁸", "About 15 digits (firmware v32 and later on newer controllers)."]
+  ]],
+  ["Structures", [
+    ["STRING", "88 bytes", "LEN (DINT) + DATA, 82 characters."],
+    ["TIMER", "12 bytes", ".PRE and .ACC (DINT, ms); .EN, .TT, .DN bits."],
+    ["COUNTER", "12 bytes", ".PRE and .ACC (DINT); .CU, .CD, .DN, .OV, .UN bits."],
+    ["CONTROL", "12 bytes", ".LEN and .POS (DINT); .EN, .DN, .ER bits. Used by FIFO, sequencer and file instructions."]
+  ]],
+  ["Tips", [
+    ["Bits in a DINT", "MyDint.0 to MyDint.31", "Bit 31 is the sign bit: setting it makes the number negative."],
+    ["Mixing types", "SINT / INT are converted to DINT", "Math converts them first, so DINT tags are faster and avoid overflow surprises."],
+    ["Overflow", "Sets the S:V flag", "A result too big for the destination wraps around and can fault the controller if the flag isn't handled."],
+    ["Arrays", "Up to 3 dimensions", "MyArray[10] has elements 0 to 9; going past the end is a major fault (Type 4, Code 20)."]
+  ]]
+];
+function renderTypes() {
+  var card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = LOGIX_TYPES.map(function (sec, i) {
+    return (i ? '<div class="secgap"></div>' : "") + '<h2 class="sechead">' + sec[0] + '</h2><div class="tl rapid">' +
+      sec[1].map(function (r) {
+        return "<div><code>" + r[0] + "</code><b class=\"typesz\">" + r[1] + "</b>" + (r[2] ? "<span>" + r[2] + "</span>" : "") + "</div>";
+      }).join("") + "</div>";
+  }).join("");
+  app.appendChild(card);
+  var about = document.createElement("details");
+  about.className = "card about";
+  about.innerHTML = "<summary>Notes</summary>" +
+    "<p>Studio 5000 Logix Designer data types for ControlLogix and CompactLogix. Unsigned types and LREAL need " +
+    "newer controllers and firmware; check your controller before using them.</p>";
+  app.appendChild(about);
+  setBar(["", ""]);
+}
+
 // ---- RAPID tab: common instructions and data types ----
 // [instruction or keyword, what it does]
 var RAPID = {
@@ -1849,8 +1965,8 @@ function renderRapid() {
 // header picks the page within it
 var GROUPS = {
   conv: [[1, "Conveyor PPM"], [2, "Sensor Timing"], [3, "Pack Gapping"], [6, "VFD"]],
-  ctrl: [[7, "Analog"], [8, "Encoder"], [11, "IP/Subnet"], [16, "Motor FLA"]],
-  ref: [[5, "Wiring"], [12, "AWG"], [9, "Symbols"], [14, "Tap Drill"], [15, "PF525"]],
+  ctrl: [[7, "Analog"], [8, "Encoder"], [21, "Timer"], [11, "IP/Subnet"], [16, "Motor FLA"]],
+  ref: [[5, "Wiring"], [12, "AWG"], [9, "Symbols"], [14, "Tap Drill"], [15, "PF525"], [22, "Data Types"]],
   robot: [[4, "Orientation"], [18, "Offsets"], [19, "Speed Zone"], [20, "RAPID"]]
 };
 // ---- Favorites: starred pages gathered into their own group (page 0 is the empty Favorites page) ----
@@ -2255,6 +2371,7 @@ function renderPage() {
   if (S.tab === 14) { renderTap(); return; }
   if (S.tab === 15) { renderPF(); return; }
   if (S.tab === 19) { renderSpeedZone(); return; }
+  if (S.tab === 22) { renderTypes(); return; }
   if (S.tab === 20) { renderRapid(); return; }
   var c = "c" + S.tab;
   app.className = "calc";
@@ -2294,7 +2411,7 @@ function renderPage() {
     }));
   }
   if (S.tab === 6) {
-    card.appendChild(seg("Find", [["fpm", "Speed (FPM)"], ["hz", "Drive Hz"]], S.c6.m, function (v) {
+    card.appendChild(seg("Find", [["fpm", "Belt Speed"], ["hz", "Drive Hz"]], S.c6.m, function (v) {
       S.c6.m = v; save(); render();
     }));
   }
@@ -2318,6 +2435,12 @@ function renderPage() {
     card.appendChild(seg("Convert", [["e2q", "Angles → Quaternion"], ["q2e", "Quaternion → Angles"]], S.c4.m, function (v) {
       S.c4.m = v; save(); render();
     }));
+  } else if (S.tab === 21) {
+    card.appendChild(seg("Time Unit", [["ms", "ms"], ["s", "Seconds"], ["min", "Minutes"], ["h", "Hours"], ["d", "Days"]], S.c21.tu, function (v) {
+      // keep the same time, shown in the new unit
+      S.c21.t = +(S.c21.t * TIME_MS[S.c21.tu] / TIME_MS[v]).toPrecision(10);
+      S.c21.tu = v; save(); render();
+    }));
   } else if (S.tab === 18) {
     // no selector: offsets are always in mm
   } else if (S.tab === 16) {
@@ -2330,7 +2453,7 @@ function renderPage() {
       S.c16.pu = v; save(); render();
     }));
   } else {
-    card.appendChild(seg("Length Units", [["in", "Inches"], ["mm", "mm"]], S[c].u, function (v) {
+    card.appendChild(seg("Units", [["in", "Inches / FPM"], ["mm", "Metric"]], S[c].u, function (v) {
       UNIT_TABS.forEach(function (k) { S[k].u = v; }); // every page follows
       save(); render();
     }));
@@ -2348,6 +2471,8 @@ function renderPage() {
   else if (S.tab === 8) list = FIELDS.c8;
   else if (S.tab === 16) list = motorFields();
   else if (S.tab === 18) list = FIELDS.c18;
+  else if (S.tab === 21) list = [{ k: "t", label: "Time", unit: { ms: "ms", s: "s", min: "MM:SS", h: "HH:MM:SS", d: "DD:HH:MM:SS" }[S.c21.tu], raw: true,
+    hms: S.c21.tu === "d" || S.c21.tu === "h" || S.c21.tu === "min" ? S.c21.tu : "", unitInLabel: true }];
   else list = S.c4.m === "e2q" ? FIELDS.c4e : FIELDS.c4q;
   curList = list;
 
@@ -2401,7 +2526,7 @@ function histKey() { return "c" + S.tab; }
 function inputsText() {
   var c = histKey();
   return curList.map(function (f) {
-    var u = f.len ? S[c].u : f.unit;
+    var u = unitOf(c, f);
     return f.label + " " + shown(c, f) + (u ? " " + u : "");
   }).join(" · ");
 }
@@ -2424,6 +2549,10 @@ function addHist() {
   save();
   renderHist();
 }
+// Thousands commas for whole-number parts of 4+ digits in a line of text (not after a decimal point)
+function commas(t) {
+  return String(t).replace(/(^|[^\d.,])(\d{4,})/g, function (m, pre, n) { return pre + Number(n).toLocaleString("en-US"); });
+}
 function renderHist() {
   if (!histBox) return;
   var c = histKey(), list = S.hist[c] || [];
@@ -2435,8 +2564,8 @@ function renderHist() {
     var p2 = function (n) { return (n < 10 ? "0" : "") + n; };
     var tm = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "<br>" +
       p2(d.getMonth() + 1) + "/" + p2(d.getDate()) + "/" + d.getFullYear();
-    h += '<div class="hrow" data-n="' + n + '"><div><div class="hres">' + e.r + '</div><div class="hin">' +
-      e.i + '</div></div><div class="htime">' + tm + "</div></div>";
+    h += '<div class="hrow" data-n="' + n + '"><div><div class="hres">' + commas(e.r) + '</div><div class="hin">' +
+      commas(e.i) + '</div></div><div class="htime">' + tm + "</div></div>";
   });
   if (list.length) h += '<div class="hbtnrow"><button type="button" class="reset hshare">Share</button>' +
     '<button type="button" class="reset hclear">Clear History</button></div>';
@@ -2462,7 +2591,7 @@ function shareHist(list) {
   var text = pageName(S.tab) + " history\n\n" + list.map(function (e) {
     var d = new Date(e.t);
     return p2(d.getMonth() + 1) + "/" + p2(d.getDate()) + "/" + d.getFullYear() + " " +
-      d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "\n" + e.r + "\n" + e.i.replace(/ · /g, ", ");
+      d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "\n" + e.r.replace(/(\d),(?=\d{3}(?!\d))/g, "$1") + "\n" + e.i.replace(/ · /g, ", ");
   }).join("\n\n");
   if (navigator.share) navigator.share({ title: "Automation Tools", text: text }).catch(function () {});
   else copyText(text, "History copied");
@@ -2526,6 +2655,12 @@ function describe() {
       p("Quaternions you enter are normalized first, so q1&sup2; + q2&sup2; + q3&sup2; + q4&sup2; = 1. " +
         "Values are shown to 6 decimal places. Note that OrientZYX takes the angles as Z, Y, X.");
   }
+  if (S.tab === 21) {
+    return p("Turns a time into timer presets. Logix (ControlLogix, CompactLogix) TON, TOF and RTO presets are " +
+        "in milliseconds, stored in a DINT.") +
+      fm(".PRE (ms) = time in seconds &times; 1000") +
+      p("With Days picked, type the time as DD:HH:MM:SS (01:12:00:00); with Hours, as HH:MM:SS (01:30:00); with Minutes, as MM:SS (02:30). A plain number works too.");
+  }
   if (S.tab === 18) {
     return p("Shows where a RAPID offset sends the robot. Enter the point's position and its X, Y, Z angles " +
         "(the same Z-Y-X angles as the Orientation page), then the offset.") +
@@ -2573,7 +2708,7 @@ function row(k, v, sub, copy) {
 }
 function big(label, val, unit, alt) {
   return '<div class="big-label">' + label + '</div><div class="big tap" data-copy="' +
-    esc(val + " " + unit) + '">' + val + " <small>" + unit + "</small></div>" +
+    esc(String(val).replace(/,/g, "") + " " + unit) + '">' + val + " <small>" + unit + "</small></div>" +
     (alt ? '<div class="alt tap" data-copy="' + esc(alt) + '">' + alt + "</div>" : "");
 }
 function ms(lenIn, fpm) { return lenIn / 12 / fpm * 60000; }
@@ -2595,8 +2730,9 @@ function renderResults() {
     var p = S.c1.L + S.c1.g;
     if (S.c1.m === "spd") {
       var f = rnd(S.c1.r * p / 12, 0);
-      h += big("Speed", fmt(f, 0), "FPM", fmt(f * 0.3048, 1) + " m/min");
-      sum = ["Speed", fmt(f, 0) + " FPM"];
+      h += metric("c1") ? big("Speed", fmt(f * M_PER_FT, 1), "m/min", fmt(f, 0) + " FPM")
+        : big("Speed", fmt(f, 0), "FPM", fmt(f * M_PER_FT, 1) + " m/min");
+      sum = ["Speed", spd("c1", f)];
     } else {
       if (p === 0) return stop();
       var r = S.c1.f * 12 / p;
@@ -2626,29 +2762,32 @@ function renderResults() {
       var F = (s.L + s.gw) / (s.L + s.gA);
       var v = s.adj === "B" ? s.a * F : s.b / F;
       var g3 = dual("c3", s.gw - s.gA);
-      h += big("Set Speed " + s.adj + " to", fmt(v, 0), "FPM");
+      h += metric("c3") ? big("Set Speed " + s.adj + " to", fmt(v * M_PER_FT, 1), "m/min", fmt(v, 0) + " FPM")
+        : big("Set Speed " + s.adj + " to", fmt(v, 0), "FPM", fmt(v * M_PER_FT, 1) + " m/min");
       h += '<div class="rows">' + row("Added", g3[0], g3[1], g3[0]) +
         row("Factor (B/A)", fmt(F, 4)) + "</div>";
-      sum = ["Set " + s.adj + " to", fmt(v, 0) + " FPM"];
+      sum = ["Set " + s.adj + " to", spd("c3", v)];
     }
   } else if (S.tab === 6) {
     var d6 = S.c6;
     if (d6.hz0 === 0 || d6.ratio === 0) return stop();
     var perHz = d6.rpm / d6.hz0 / d6.ratio * Math.PI * d6.D / 12; // FPM per Hz
+    var perHzRow = metric("c6") ? row("m/min per Hz", fmt(perHz * M_PER_FT, 3)) : row("FPM per Hz", fmt(perHz, 2));
     if (d6.m === "fpm") {
       var mr = d6.rpm * d6.hz / d6.hz0, fp = rnd(mr / d6.ratio * Math.PI * d6.D / 12, 0);
-      h += big("Belt Speed", fmt(fp, 0), "FPM", fmt(fp * 0.3048, 1) + " m/min");
+      h += metric("c6") ? big("Belt Speed", fmt(fp * M_PER_FT, 1), "m/min", fmt(fp, 0) + " FPM")
+        : big("Belt Speed", fmt(fp, 0), "FPM", fmt(fp * M_PER_FT, 1) + " m/min");
       h += '<div class="rows">' + row("Motor Speed", fmt(mr, 0) + " RPM") +
         row("Gearbox Output", fmt(mr / d6.ratio, 1) + " RPM") +
-        row("FPM per Hz", fmt(perHz, 2)) + "</div>";
-      sum = ["Belt", fmt(fp, 0) + " FPM"];
+        perHzRow + "</div>";
+      sum = ["Belt", spd("c6", fp)];
     } else {
       if (perHz === 0) return stop();
       var hz = d6.f / perHz, mr2 = d6.rpm * hz / d6.hz0;
       h += big("Set Drive to", fmt(hz, 1), "Hz");
       h += '<div class="rows">' + row("Motor Speed", fmt(mr2, 0) + " RPM") +
         row("Gearbox Output", fmt(mr2 / d6.ratio, 1) + " RPM") +
-        row("FPM per Hz", fmt(perHz, 2)) + "</div>";
+        perHzRow + "</div>";
       if (hz > d6.hz0) h += '<div class="warnrow">Above the motor\'s ' + fmt(d6.hz0, 0) + ' Hz base frequency</div>';
       sum = ["Drive", fmt(hz, 1) + " Hz"];
     }
@@ -2694,8 +2833,24 @@ function renderResults() {
       row("Counts per Foot", fmt(cpi * 12, 1)) +
       row("Counts per Rev", fmt(cpr, 0)) +
       row("Resolution", resTxt[0], resTxt[1], resTxt[0]) +
-      row("Input Frequency at " + fmt(e8.f, 0) + " FPM", fA >= 1000 ? fmt(fA / 1000, 2) + " kHz" : fmt(fA, 0) + " Hz") + "</div>";
+      row("Input Frequency at " + spd("c8", e8.f), fA >= 1000 ? fmt(fA / 1000, 2) + " kHz" : fmt(fA, 0) + " Hz") + "</div>";
     sum = ["Counts", fmt(cnt, 1)];
+  } else if (S.tab === 21) {
+    var tms = S.c21.t * TIME_MS[S.c21.tu], pre = Math.round(tms);
+    var hh = Math.floor(tms / 3600000), mm = Math.floor(tms / 60000) % 60, ss = (tms / 1000) % 60;
+    var pad = function (n) { return (n < 10 ? "0" : "") + n; };
+    // in ms the preset is just what was typed, so it isn't repeated
+    if (S.c21.tu !== "ms") h += big("Logix .PRE", pre.toLocaleString("en-US"), "ms");
+    h += '<div class="rows">' +
+      // the same time three ways
+      row("Seconds", Number(plain(tms / 1000, 3)).toLocaleString("en-US", { maximumFractionDigits: 3 }), "", plain(tms / 1000, 3)) +
+      row("Minutes", pad(Math.floor(tms / 60000)) + ":" + (ss < 10 ? "0" : "") + plain(ss, 3), "MM:SS") +
+      row("Hours", pad(hh) + ":" + pad(mm) + ":" + (ss < 10 ? "0" : "") + plain(ss, 3), "HH:MM:SS") +
+      row("Days", pad(Math.floor(tms / 86400000)) + ":" + pad(hh % 24) + ":" + pad(mm) + ":" + (ss < 10 ? "0" : "") + plain(ss, 3),
+        "DD:HH:MM:SS") + "</div>";
+    if (pre > 2147483647) h += '<div class="warnrow">Longer than a DINT preset allows (about 24.8 days)</div>';
+    else if (tms > 0 && tms < 1) h += '<div class="warnrow">Under 1 ms: the timer can\'t run that short</div>';
+    sum = ["PRE", pre.toLocaleString("en-US") + " ms"];
   } else if (S.tab === 18) {
     var o = S.c18, qp = eulerToQuat(o.ax, o.ay, o.az);
     var xyz = function (v) { return v.map(function (n) { return plain(n, 2); }).join(", "); };
@@ -2938,7 +3093,7 @@ document.addEventListener("touchstart", function (e) {
   // The tab strip swipes between pages; the bottom menu swipes between groups
   var ae = document.activeElement, keyboard = typing || (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName));
   if (keyboard) { swipe = null; return; } // no swiping while the keyboard is open
-  if (e.touches.length !== 1 || t.closest("input, select, textarea, header, #upd, #bar, #log") ||
+  if (e.touches.length !== 1 || t.closest("input, select, textarea, header, #upd, #bar, #log, #srch") ||
       (window.visualViewport && window.visualViewport.scale > 1.01)) { swipe = null; return; }
   swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), dx: 0, side: false,
     sub: !!SWIPE_SUBS[S.tab] && onChoiceArea(e.touches[0].clientX, e.touches[0].clientY), nav: !!t.closest("nav") };
@@ -2992,6 +3147,108 @@ render();
 if (typeof APP_VERSION === "string")
   document.getElementById("ver").innerHTML = APP_VERSION + (typeof APP_DATE === "string" ? " - " + APP_DATE : "") +
     " &middot; <u>What's New</u>";
+
+// ---- Search: every page and reference entry, by name or description ----
+var srchEl = document.getElementById("srch"), srchIn = document.getElementById("srchin"), srchIndex = null;
+function buildSearch() {
+  var L = [];
+  function add(label, desc, where, tab, set) { L.push({ label: label, desc: desc || "", where: where, tab: tab, set: set }); }
+  for (var g in GROUPS) if (g !== "fav") GROUPS[g].forEach(function (pg) { add(pg[1], "", GROUP_NAMES[g] + " page", pg[0]); });
+  [["elec", "Electrical"], ["pneu", "Pneumatic"], ["hyd", "Hydraulic"], ["dir", "Valves"], ["act", "Valves"]].forEach(function (k) {
+    SYMBOLS[k[0]].forEach(function (sy) {
+      add(sy[0], sy[1], "Symbols · " + k[1], 9, function () { S.c9.k = k[0] === "dir" || k[0] === "act" ? "valves" : k[0]; });
+    });
+  });
+  PF_PARAMS.forEach(function (sec) {
+    sec[1].forEach(function (r) { add(r[0] + " " + r[1], r[2], "PF525 · Parameters", 15, function () { S.c15.k = "par"; }); });
+  });
+  PF_FAULTS.forEach(function (r) { add(r[0] + " " + r[1], r[2], "PF525 · Faults", 15, function () { S.c15.k = "flt"; }); });
+  [["unc", "UNC"], ["unf", "UNF"], ["m", "Metric"]].forEach(function (k) {
+    TAPS[k[0]].forEach(function (r) {
+      add(r[0], "Tap drill " + (k[0] === "m" ? r[1] + " mm" : r[1]), "Tap Drill · " + k[1], 14, function () { S.c14.k = k[0]; });
+    });
+  });
+  WIRES.forEach(function (w) { add(w.color + " " + w.code, "Pin " + w.pin + ": " + w.use, "Wiring · Cables", 5, function () { S.c5.pins = "cables"; }); });
+  COLOR_SOLID.concat(COLOR_STRIPE).forEach(function (c) {
+    add(c[0] + " " + c[1], c[2] ? "IEC " + c[2] : "", "Wiring · Colors", 5, function () { S.c5.pins = "codes"; });
+  });
+  ["eyes", "prox", "nonc"].forEach(function (k) {
+    SENSOR_TEXT[k].forEach(function (r) { add(r[0], r[1], "Wiring · Sensors", 5, function () { S.c5.pins = "sensors"; }); });
+  });
+  [["move", "Motion"], ["io", "I/O"], ["points", "Points"], ["data", "Data"]].forEach(function (k) {
+    RAPID[k[0]].forEach(function (r) { add(r[0], r[1], "RAPID · " + k[1], 20, function () { S.c20.k = k[0]; }); });
+  });
+  LOGIX_TYPES.forEach(function (sec) {
+    sec[1].forEach(function (r) { add(r[0], r[1] + (r[2] ? " · " + r[2] : ""), "Data Types · " + sec[0], 22, function () {}); });
+  });
+  AWG.forEach(function (w) { add(w[0] + " AWG", w[2] + " mm² · " + w[3] + " A", "AWG", 12); });
+  ZONES.forEach(function (z) { add(z[0], z[1] === "" ? "Stops at the point" : z[1] + " mm zone", "Speed Zone · Zone", 19, function () { S.c19.k = "zone"; }); });
+  SPEEDS.forEach(function (v) { add("v" + v, v + " mm/s", "Speed Zone · Speed", 19, function () { S.c19.k = "speed"; }); });
+  return L;
+}
+function searchFor(q) {
+  var words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  srchIndex = srchIndex || buildSearch();
+  var hits = srchIndex.filter(function (e) {
+    var hay = (e.label + " " + e.desc + " " + e.where).toLowerCase();
+    return words.every(function (w) { return hay.indexOf(w) >= 0; });
+  });
+  // names that match come before entries that only mention the words in their description
+  var score = function (e) { var l = e.label.toLowerCase(); return l.indexOf(words[0]) === 0 ? 0 : l.indexOf(words[0]) > 0 ? 1 : 2; };
+  return hits.map(function (e, i) { return [score(e), i, e]; })
+    .sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; }).map(function (x) { return x[2]; }).slice(0, 50);
+}
+function showSearch() {
+  srchEl.hidden = false;
+  srchIn.value = "";
+  drawSearch();
+  history.pushState({ srch: 1 }, "");
+  setTimeout(function () { srchIn.focus(); }, 50);
+}
+function closeSearch() { if (!srchEl.hidden) { srchEl.hidden = true; srchIn.blur(); } }
+function hideSearch() { if (history.state && history.state.srch) history.back(); else closeSearch(); }
+function drawSearch() {
+  var q = srchIn.value.trim(), res = searchFor(q), box = document.getElementById("srchres");
+  box.innerHTML = !q ? '<p class="srchtip">Try "limit switch", "F004", "1/4-20", "BK" or "MoveL".</p>' :
+    !res.length ? '<p class="srchtip">Nothing found for "' + escHtml(q) + '".</p>' :
+    res.map(function (e, i) {
+      return '<button type="button" class="srchrow" data-i="' + i + '"><b>' + escHtml(e.label) + "</b>" +
+        (e.desc ? "<span>" + escHtml(e.desc) + "</span>" : "") + "<small>" + escHtml(e.where) + "</small></button>";
+    }).join("");
+  box.querySelectorAll(".srchrow").forEach(function (b) {
+    b.onclick = function () { goSearch(res[+b.dataset.i]); };
+  });
+}
+// Open the page and choice an entry lives on, then point it out
+function goSearch(e) {
+  closeSearch();
+  if (history.state && history.state.srch) history.replaceState(null, "");
+  S.inFav = false;
+  if (e.set) e.set();
+  openTab(e.tab);
+  if (!e.set) return;
+  var key = e.label.toLowerCase();
+  var hit = Array.prototype.slice.call(app.querySelectorAll(".sym, .pf > div, .tl > div, .codes > div, .wire, .awg span, code"))
+    .find(function (el) { return el.textContent.toLowerCase().indexOf(key.split(" ")[0]) >= 0 && el.textContent.toLowerCase().indexOf(key) >= 0; }) ||
+    Array.prototype.slice.call(app.querySelectorAll(".sym b, .pf b, .tl b, .codes b, .wire b, .awg span, code"))
+    .find(function (el) { return el.textContent.toLowerCase().indexOf(key.split(" ")[0]) === 0; });
+  if (!hit) return;
+  var row = hit.closest(".sym, .pf > div, .tl > div, .codes > div, .wire") || hit;
+  row.scrollIntoView({ block: "center" });
+  row.classList.add("found");
+  setTimeout(function () { row.classList.remove("found"); }, 1800);
+}
+document.getElementById("find").onclick = showSearch;
+document.getElementById("srchx").onclick = hideSearch;
+srchIn.addEventListener("input", drawSearch);
+srchEl.onclick = function (e) { if (e.target === srchEl) hideSearch(); };
+window.addEventListener("popstate", closeSearch);
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape" && !srchEl.hidden) hideSearch();
+  // on a computer, "/" opens search
+  if (e.key === "/" && srchEl.hidden && !/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName)) { e.preventDefault(); showSearch(); }
+});
 
 // ---- What's New: tap the version at the bottom, or offered once after an update ----
 // The bar above the bottom menu does two jobs: "vXX Ready - Tap to Update" and

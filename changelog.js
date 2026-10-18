@@ -1,6 +1,13 @@
 // What's New. Add a new entry at the top with every version (same number as version.js).
 // Keep each line short and in plain words: what changed for the person using the app.
 var CHANGELOG = [
+  { v: "v82", d: "10/18/2026", n: [
+    "New Timer page under Controls: turn ms, seconds, minutes (MM:SS), hours (HH:MM:SS) or days (DD:HH:MM:SS) into a Logix .PRE",
+    "New Data Types page under Reference: Studio 5000 number sizes and ranges",
+    "Search: tap the magnifier to find any page, symbol, fault, tap or wire color",
+    "Metric choice on conveyor pages shows speeds in m/min",
+    "Big numbers show commas, but copied and shared results leave them out"
+  ] },
   { v: "v81", d: "10/17/2026", n: [
     "New app icon: a safety-yellow hazard-stripe frame with AT",
     "On a computer, the icon and app name sit at the top of the sidebar"
