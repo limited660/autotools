@@ -1,6 +1,12 @@
 // What's New. Add a new entry at the top with every version (same number as version.js).
 // Keep each line short and in plain words: what changed for the person using the app.
 var CHANGELOG = [
+  { v: "v86", d: "10/19/2026", n: [
+    "Orientation: fixed wrong X and Z angles when Y is at 90° or -90°",
+    "Orientation: controller noise like 6.12323e-17 counts as 0, so [0, 0, 1, 0] reads X 0° Y 180° Z 0°",
+    "Orientation: the simpler of the two matching angle sets shows first, with the other under Same As",
+    "Orientation history reads X 0° Y 90° Z 30°, with each angle after its letter"
+  ] },
   { v: "v85", d: "10/18/2026", n: [
     "Data Types heading now reads Logix Data Types"
   ] },

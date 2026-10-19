@@ -1263,7 +1263,7 @@ function pasteEl() {
     delete invalid.qpaste;
     scheduleHist();
     ["q1", "q2", "q3", "q4"].forEach(function (k, i) {
-      S.c4[k] = Number(n[i]);
+      S.c4[k] = Math.abs(Number(n[i])) < 1e-6 ? 0 : Number(n[i]); // 6.12323e-17 is really 0
       var box = app.querySelector('input[data-k="' + k + '"]');
       if (box) box.value = String(S.c4[k]);
       delete invalid["c4" + k];
@@ -1285,7 +1285,7 @@ function pasteEl() {
 }
 
 // ABB convention (RAPID OrientZYX / EulerZYX): rotate about Z, then Y, then X.
-// q1 is the scalar part. Matches quat2euler.com.
+// q1 is the scalar part.
 function eulerToQuat(xd, yd, zd) {
   var r = Math.PI / 360; // degrees -> half-angle radians
   var cx = Math.cos(xd * r), sx = Math.sin(xd * r);
@@ -1311,14 +1311,30 @@ function qRotate(q, v) { // turn vector v by q: q * v * q'
   var r = qMul(qMul(q, [0, v[0], v[1], v[2]]), [q[0], -q[1], -q[2], -q[3]]);
   return [r[1], r[2], r[3]];
 }
+// Returns [x, y, z] in degrees. Every orientation has two angle sets (the second is
+// X+180, 180-Y, Z+180); the one with the smaller angles comes first, the other second.
 function quatToEuler(q) {
+  // drop float noise from the controller, like 6.12323e-17, so 180 doesn't show as -179.999995
+  q = q.map(function (v) { return Math.abs(v) < 1e-6 ? 0 : v; });
   var w = q[0], x = q[1], y = q[2], z = q[3], d = 180 / Math.PI;
-  var s = Math.max(-1, Math.min(1, 2 * (w * y - z * x)));
-  return [
-    Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y)) * d,
-    Math.asin(s) * d,
-    Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z)) * d
-  ];
+  // rotation matrix entries used below (row, column)
+  var r00 = 1 - 2 * (y * y + z * z), r10 = 2 * (x * y + w * z), r20 = 2 * (x * z - w * y);
+  var r21 = 2 * (y * z + w * x), r22 = 1 - 2 * (x * x + y * y);
+  var r01 = 2 * (x * y - w * z), r11 = 1 - 2 * (x * x + z * z);
+  var cy = Math.sqrt(r00 * r00 + r10 * r10); // cos(Y), never negative
+  var wrap = function (a) { // into -180 .. 180, with -180 shown as 180
+    a = ((a + 180) % 360 + 360) % 360 - 180;
+    a = Math.round(a * 1e9) / 1e9;
+    return a === -180 ? 180 : a === 0 ? 0 : a;
+  };
+  var a = cy > 1e-7
+    ? [Math.atan2(r21, r22) * d, Math.atan2(-r20, cy) * d, Math.atan2(r10, r00) * d]
+    // Y at +/-90 (gimbal lock): X and Z turn about the same axis, so X is set to 0 and Z takes all of it
+    : [0, (r20 < 0 ? 90 : -90), Math.atan2(-r01, r11) * d];
+  a = a.map(wrap);
+  var b = [a[0] + 180, 180 - a[1], a[2] + 180].map(wrap);
+  var size = function (e) { return Math.abs(e[0]) + Math.abs(e[1]) + Math.abs(e[2]); };
+  return size(b) < size(a) - 1e-6 ? [b, a] : [a, b];
 }
 
 var resultsBox;
@@ -2631,6 +2647,10 @@ function addHist() {
 function commas(t) {
   return String(t).replace(/(^|[^\d.,])(\d{4,})/g, function (m, pre, n) { return pre + Number(n).toLocaleString("en-US"); });
 }
+// Older Orientation entries were saved as "X Y Z: 0° 90° 30°"; show them as "X 0° Y 90° Z 30°"
+function oldXYZ(r) {
+  return String(r).replace(/^X Y Z: (\S+)\s+(\S+)\s+(\S+)$/, "X $1  Y $2  Z $3");
+}
 function renderHist() {
   if (!histBox) return;
   var c = histKey(), list = S.hist[c] || [];
@@ -2642,7 +2662,7 @@ function renderHist() {
     var p2 = function (n) { return (n < 10 ? "0" : "") + n; };
     var tm = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "<br>" +
       p2(d.getMonth() + 1) + "/" + p2(d.getDate()) + "/" + d.getFullYear();
-    h += '<div class="hrow" data-n="' + n + '"><div><div class="hres">' + commas(e.r) + '</div><div class="hin">' +
+    h += '<div class="hrow" data-n="' + n + '"><div><div class="hres">' + commas(oldXYZ(e.r)) + '</div><div class="hin">' +
       commas(e.i) + '</div></div><div class="htime">' + tm + "</div></div>";
   });
   if (list.length) h += '<div class="hbtnrow"><button type="button" class="reset hshare">Share</button>' +
@@ -2669,7 +2689,7 @@ function shareHist(list) {
   var text = pageName(S.tab) + " history\n\n" + list.map(function (e) {
     var d = new Date(e.t);
     return p2(d.getMonth() + 1) + "/" + p2(d.getDate()) + "/" + d.getFullYear() + " " +
-      d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "\n" + e.r.replace(/(\d),(?=\d{3}(?!\d))/g, "$1") + "\n" + e.i.replace(/ · /g, ", ");
+      d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "\n" + oldXYZ(e.r).replace(/(\d),(?=\d{3}(?!\d))/g, "$1") + "\n" + e.i.replace(/ · /g, ", ");
   }).join("\n\n");
   if (navigator.share) navigator.share({ title: "Automation Tools", text: text }).catch(function () {});
   else copyText(text, "History copied");
@@ -2728,7 +2748,8 @@ function describe() {
     return p("Converts between X, Y, Z angles in degrees and the quaternion [q1, q2, q3, q4] " +
         "used by ABB robot orient data. q1 is the scalar part, and [1, 0, 0, 0] means no rotation.") +
       p("Angles follow ABB's Z-Y-X order, the same as RAPID's OrientZYX and EulerZYX: " +
-        "rotate about Z, then Y, then X. Results match quat2euler.com.") +
+        "rotate about Z, then Y, then X. Every orientation can be written as two sets of angles; " +
+        "the one with the smaller angles shows first, and the other is under Same As.") +
       fm("q = Rz(Z) &times; Ry(Y) &times; Rx(X)") +
       p("Quaternions you enter are normalized first, so q1&sup2; + q2&sup2; + q3&sup2; + q4&sup2; = 1. " +
         "Values are shown to 6 decimal places. Note that OrientZYX takes the angles as Z, Y, X.");
@@ -2958,7 +2979,9 @@ function renderResults() {
   } else {
     var c4 = S.c4;
     if (c4.m === "e2q") {
-      var q = eulerToQuat(c4.x, c4.y, c4.z).map(function (x) { return plain(x, 6); });
+      var q = eulerToQuat(c4.x, c4.y, c4.z);
+      if (q[0] < 0) q = q.map(function (x) { return -x; }); // same orientation, shown with q1 positive like the controller
+      q = q.map(function (x) { return plain(x, 6); });
       h += '<div class="big-label">Quaternion</div><div class="grid g4">' +
         q.map(function (x, i) {
           return '<div class="cell tap" data-copy="' + x + '"><b>q' + (i + 1) + "</b><span>" + x + "</span></div>";
@@ -2976,16 +2999,17 @@ function renderResults() {
         return;
       }
       var qn = raw.map(function (x) { return x / len; });
-      var e = quatToEuler(qn).map(function (x) { return plain(x, 6); });
+      var both = quatToEuler(qn), e = both[0].map(function (x) { return plain(x, 6); });
+      var e2 = both[1].map(function (x) { return plain(x, 6); });
       h += '<div class="big-label">Euler Angles</div><div class="grid g3">' +
         ["X", "Y", "Z"].map(function (a, i) {
           return '<div class="cell tap" data-copy="' + e[i] + '"><b>' + a + "</b><span>" + e[i] + '<i class="deg">&deg;</i></span></div>';
         }).join("") + "</div>";
-      h += '<div class="rows">' + row("Normalized",
-        "[" + qn.map(function (x) { return plain(x, 6); }).join(", ") + "]") + "</div>";
+      h += '<div class="rows">' + row("Same As", "X " + e2[0] + "°  Y " + e2[1] + "°  Z " + e2[2] + "°") +
+        row("Normalized", "[" + qn.map(function (x) { return plain(Math.abs(x) < 1e-6 ? 0 : x, 6); }).join(", ") + "]") + "</div>";
       copies.push(["Copy [X,Y,Z]", "[" + e.join(",") + "]"]);
       copies.push(["Copy OrientZYX(Z,Y,X)", "OrientZYX(" + [e[2], e[1], e[0]].join(",") + ")"]);
-      sum = ["X Y Z", e.join("°  ") + "°"];
+      sum = ["", "X " + e[0] + "°  Y " + e[1] + "°  Z " + e[2] + "°"];
     }
   }
   copies.forEach(function (cp, i) {
