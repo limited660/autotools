@@ -1,6 +1,9 @@
 // What's New. Add a new entry at the top with every version (same number as version.js).
 // Keep each line short and in plain words: what changed for the person using the app.
 var CHANGELOG = [
+  { v: "v90", d: "10/19/2026", n: [
+    "Orientation: switching between Angles → Quaternion and Quaternion → Angles carries the answer over as the new entry"
+  ] },
   { v: "v89", d: "10/19/2026", n: [
     "Tool Orientation: swiping up or down on the drawing scrolls the page again; swipe sideways to turn it"
   ] },

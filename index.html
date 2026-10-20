@@ -2688,7 +2688,20 @@ function renderPage() {
     }));
   } else if (S.tab === 4) {
     card.appendChild(seg("Convert", [["e2q", "Angles → Quaternion"], ["q2e", "Quaternion → Angles"]], S.c4.m, function (v) {
-      S.c4.m = v; save(); render();
+      // the answer on the side being left becomes the entry on the other side
+      var c4 = S.c4, r6 = function (x) { return Number(plain(x, 6)); };
+      if (v === "q2e" && c4.m === "e2q") {
+        var q = eulerToQuat(c4.x, c4.y, c4.z);
+        if (q[0] < 0) q = q.map(function (x) { return -x; });
+        ["q1", "q2", "q3", "q4"].forEach(function (k, i) { c4[k] = r6(q[i]); delete invalid["c4" + k]; });
+      } else if (v === "e2q" && c4.m === "q2e") {
+        var len = Math.hypot(c4.q1, c4.q2, c4.q3, c4.q4);
+        if (len) {
+          var e = quatToEuler([c4.q1, c4.q2, c4.q3, c4.q4].map(function (x) { return x / len; }))[0];
+          ["x", "y", "z"].forEach(function (k, i) { c4[k] = r6(e[i]); delete invalid["c4" + k]; });
+        }
+      }
+      c4.m = v; save(); render();
     }));
   } else if (S.tab === 21) {
     card.appendChild(seg("Time Unit", [["ms", "ms"], ["s", "Seconds"], ["min", "Minutes"], ["h", "Hours"], ["d", "Days"]], S.c21.tu, function (v) {
