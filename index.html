@@ -722,7 +722,7 @@ label.field:has(.stepper) > span { padding-left: 4px; }
 .orient-card:empty { display: none; }
 .results .orient-views.orient-end { margin-bottom: 0; }
 .results .cell { text-align: center; }
-.results svg.orient { display: block; width: 100%; max-width: 310px; margin: 4px auto 0; overflow: visible;
+.results svg.orient { display: block; width: 100%; max-width: 420px; margin: 4px auto 0; overflow: visible;
   touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
 .results .orient-views { display: flex; justify-content: center; flex-wrap: wrap; gap: 2px 4px; margin: -6px 0 8px; }
 .results .orient-styles { margin: 0 0 2px; }
@@ -1434,6 +1434,14 @@ function orientInner() {
 (function () {
   var drag = null;
   var redraw = function () { var svg = document.querySelector("svg.orient"); if (svg) svg.innerHTML = orientInner(); };
+  // a finger that lands on the drawing only turns it: the page doesn't scroll until it lifts
+  // (touch-action alone isn't enough on every phone browser)
+  var held = false;
+  document.addEventListener("touchstart", function (e) {
+    held = !!(e.target.closest && e.target.closest("svg.orient"));
+  }, { passive: true });
+  document.addEventListener("touchmove", function (e) { if (held) e.preventDefault(); }, { passive: false });
+  ["touchend", "touchcancel"].forEach(function (ev) { document.addEventListener(ev, function () { held = false; }); });
   document.addEventListener("pointerdown", function (e) {
     var svg = e.target.closest && e.target.closest("svg.orient");
     if (!svg) return;

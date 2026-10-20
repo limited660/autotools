@@ -1,6 +1,9 @@
 // What's New. Add a new entry at the top with every version (same number as version.js).
 // Keep each line short and in plain words: what changed for the person using the app.
 var CHANGELOG = [
+  { v: "v88", d: "10/19/2026", n: [
+    "Tool Orientation: the drawing is bigger, and dragging on it no longer scrolls the page"
+  ] },
   { v: "v87", d: "10/19/2026", n: [
     "Orientation: new Tool Orientation card that draws the tool's x, y and z against the base X, Y and Z",
     "Drag the drawing to turn the view, or tap Iso, Top, Front or Side; Play spins it once around",
