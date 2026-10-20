@@ -718,7 +718,16 @@ label.field:has(.stepper) > span { padding-left: 4px; }
 .big { font-size: 48px; letter-spacing: -.03em; }
 .results .big { color: var(--accent-ink); }
 .results .big-label, .results .alt, .results .hint { text-align: left; }
-.results .cell { text-align: center; } /* quaternion / angle boxes stay centered */
+.results .big-label.mid { text-align: center; } /* Orientation headings */
+.orient-card:empty { display: none; }
+.results .orient-views.orient-end { margin-bottom: 0; }
+.results .cell { text-align: center; }
+.results svg.orient { display: block; width: 100%; max-width: 310px; margin: 4px auto 0; overflow: visible;
+  touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.results .orient-views { display: flex; justify-content: center; flex-wrap: wrap; gap: 2px 4px; margin: -6px 0 8px; }
+.results .orient-styles { margin: 0 0 2px; }
+.results .orient-style.on { color: var(--text); text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
+.results .orient-key { text-align: center; font-size: 13px; color: var(--muted); margin: 2px 0 12px; } /* quaternion / angle boxes stay centered */
 .cell span { position: relative; }
 .cell .deg { position: absolute; left: 100%; font-style: normal; } /* the degree sign doesn't shift the number off center */
 .about summary { font-size: 13px; letter-spacing: .1em; }
@@ -1337,7 +1346,134 @@ function quatToEuler(q) {
   return size(b) < size(a) - 1e-6 ? [b, a] : [a, b];
 }
 
-var resultsBox;
+var resultsBox, orientBox = null; // orientBox: Orientation's own card for the tool drawing
+
+// Tool frame drawing for Orientation: the work object (base) axes faint, the tool's own
+// x / y / z turned by the quaternion, and the tool body along its z (the way it points).
+// Drag the drawing to look from another side; that only turns the view, not the result.
+var ORV = { yaw: 45, pitch: 25 }, ORQ = [1, 0, 0, 0]; // view angles and the quaternion drawn
+var ORVIEWS = { iso: [45, 25], top: [180, 90], front: [0, 0], side: [90, 0] }; // [yaw, pitch]
+// Gray: tool drawn over gray dashed base axes. Side by Side: base and tool drawn apart, seen the same way.
+var OR_STYLES = [["gray", "Gray"], ["side", "Side by Side"]], ORS = "gray";
+try { if (localStorage.getItem("autotools-orient") === "side") ORS = "side"; } catch (e) {}
+var OR_COL = ["#ef4444", "#22c55e", "#3b82f6"];
+var ORA = 0; // counts Plays, so a new one (or new numbers) stops the old one
+function orientSvg(q) {
+  ORQ = q; ORA++; // new numbers stop any Play
+  var btns = function (list, cls, cur) {
+    return list.map(function (o) {
+      return '<button type="button" class="reset ' + cls + (o[0] === cur ? " on" : "") + '" data-v="' + o[0] + '">' + o[1] + "</button>";
+    }).join("");
+  };
+  return '<div class="big-label mid">Tool Orientation</div>' +
+    '<div class="orient-views orient-styles">' + btns(OR_STYLES, "orient-style", ORS) + "</div>" +
+    '<svg class="orient" viewBox="0 0 240 200" role="img" aria-label="Tool axes turned by this orientation. Drag to turn the view.">' +
+    orientInner() + "</svg>" +
+    '<p class="orient-key">Drag to turn</p>' +
+    '<div class="orient-views orient-end">' + btns([["iso", "Iso"], ["top", "Top"], ["front", "Front"], ["side", "Side"]], "orient-view", "") +
+    '<button type="button" class="reset orient-play">Play</button></div>';
+}
+function orientInner() {
+  var q = ORQ;
+  var ya = ORV.yaw * Math.PI / 180, pa = ORV.pitch * Math.PI / 180;
+  var cyw = Math.cos(ya), syw = Math.sin(ya), cp = Math.cos(pa), sp = Math.sin(pa);
+  // camera turned yaw about base Z and tipped down by pitch; C = center, L = arrow length (px)
+  var proj = function (C, L) {
+    return function (v) {
+      var toward = cyw * v[0] + syw * v[1];
+      return [C[0] + (cyw * v[1] - syw * v[0]) * L, C[1] - (v[2] * cp - toward * sp) * L];
+    };
+  };
+  var depth = function (v) { return (cyw * v[0] + syw * v[1]) * cp + v[2] * sp; }; // larger = closer to you
+  var f = function (n) { return Math.round(n * 10) / 10; };
+  // o: { w: width, fs: font size, head: arrowhead, dash, len: length }
+  var arrow = function (P, v, col, lab, o) {
+    var a = P([0, 0, 0]), b = P(v), dx = b[0] - a[0], dy = b[1] - a[1], n = Math.hypot(dx, dy), fs = o.fs || 13;
+    var seg = '<line x1="' + f(a[0]) + '" y1="' + f(a[1]) + '" x2="' + f(b[0]) + '" y2="' + f(b[1]) + '" stroke="' + col + '"';
+    var out = "<g>" + seg + ' stroke-width="' + o.w + '" stroke-linecap="round"' + (o.dash ? ' stroke-dasharray="4 4"' : "") + "/>";
+    if (n > 4) {
+      var ux = dx / n, uy = dy / n, hs = o.w * 3, hx = b[0] - ux * hs, hy = b[1] - uy * hs;
+      if (o.head) out += '<path d="M' + f(b[0]) + " " + f(b[1]) + "L" + f(hx - uy * hs / 2) + " " + f(hy + ux * hs / 2) +
+        "L" + f(hx + uy * hs / 2) + " " + f(hy - ux * hs / 2) + 'Z" fill="' + col + '"/>';
+      out += '<text x="' + f(b[0] + ux * fs * 0.85) + '" y="' + f(b[1] + uy * fs * 0.85 + fs * 0.32) + '" fill="' + col +
+        '" font-size="' + fs + '" font-weight="700" text-anchor="middle">' + lab + "</text>";
+    } else {
+      out += '<text x="' + f(b[0] + fs * 0.7) + '" y="' + f(b[1] - fs * 0.45) + '" fill="' + col + '" font-size="' + fs +
+        '" font-weight="700">' + lab + "</text>";
+    }
+    return out + "</g>";
+  };
+  var ax = [[1, 0, 0], [0, 1, 0], [0, 0, 1]], h = "", BN = ["X", "Y", "Z"];
+  var t = ax.map(function (v) { return qRotate(q, v); });
+  var tool = function (P, C, o) { // the tool's x / y / z, farthest drawn first
+    var out = "", parts = [];
+    ["x", "y", "z"].forEach(function (l, i) { parts.push({ d: depth(t[i]), s: arrow(P, t[i], OR_COL[i], l, o) }); });
+    parts.sort(function (a, b) { return a.d - b.d; }).forEach(function (p) { out += p.s; });
+    return out + '<circle cx="' + C[0] + '" cy="' + C[1] + '" r="4" fill="var(--text)"/>';
+  };
+  var base = function (P, o, cols) {
+    var out = "";
+    ax.forEach(function (v, i) {
+      out += arrow(P, v.map(function (c) { return c * (o.len || 1.4); }), cols ? OR_COL[i] : "var(--muted)", BN[i], o);
+    });
+    return out;
+  };
+  if (ORS === "gray") {
+    var P = proj([120, 100], 62);
+    h = base(P, { w: 1.3, fs: 11, dash: true }) + tool(P, [120, 100], { w: 3, head: true });
+  } else { // side by side: base on the left, tool on the right, seen from the same angle
+    var PL = proj([62, 104], 40), PR = proj([180, 104], 40);
+    h = '<text x="62" y="18" fill="var(--muted)" font-size="11" font-weight="700" text-anchor="middle">BASE</text>' +
+      '<text x="180" y="18" fill="var(--muted)" font-size="11" font-weight="700" text-anchor="middle">TOOL</text>' +
+      '<line x1="121" y1="30" x2="121" y2="180" stroke="var(--line)" stroke-width="1.5"/>' +
+      base(PL, { w: 2.5, fs: 12, head: true, len: 1 }, true) + '<circle cx="62" cy="104" r="3.5" fill="var(--text)"/>' +
+      tool(PR, [180, 104], { w: 2.5, fs: 12, head: true });
+  }
+  return h;
+}
+(function () {
+  var drag = null;
+  var redraw = function () { var svg = document.querySelector("svg.orient"); if (svg) svg.innerHTML = orientInner(); };
+  document.addEventListener("pointerdown", function (e) {
+    var svg = e.target.closest && e.target.closest("svg.orient");
+    if (!svg) return;
+    ORA++; // dragging stops Play
+    drag = { x: e.clientX, y: e.clientY, yaw: ORV.yaw, pitch: ORV.pitch };
+    try { svg.setPointerCapture(e.pointerId); } catch (err) {}
+    e.preventDefault();
+  });
+  document.addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    ORV.yaw = drag.yaw - (e.clientX - drag.x) * 0.6;
+    ORV.pitch = Math.max(-90, Math.min(90, drag.pitch + (e.clientY - drag.y) * 0.6));
+    redraw();
+  });
+  ["pointerup", "pointercancel"].forEach(function (ev) { document.addEventListener(ev, function () { drag = null; }); });
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest(".orient-view, .orient-style, .orient-play");
+    if (!b) return;
+    if (!b.classList.contains("orient-play")) ORA++; // a view or style button stops Play
+    if (b.classList.contains("orient-view")) { ORV.yaw = ORVIEWS[b.dataset.v][0]; ORV.pitch = ORVIEWS[b.dataset.v][1]; }
+    else if (b.classList.contains("orient-style")) {
+      ORS = b.dataset.v;
+      try { localStorage.setItem("autotools-orient", ORS); } catch (err) {}
+      document.querySelectorAll(".orient-style").forEach(function (x) { x.classList.toggle("on", x === b); });
+    } else { // Play: the view turns all the way around base Z; base and tool turn together, nothing else changes
+      var y0 = ORV.yaw, t0 = performance.now(), id = ++ORA;
+      var step = function (now) {
+        if (id !== ORA) return;
+        var k = Math.min(1, (now - t0) / 4000);
+        ORV.yaw = y0 + 360 * (0.5 - Math.cos(k * Math.PI) / 2); // eases in and out
+        if (k >= 1) ORV.yaw = y0;
+        redraw();
+        if (k < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+      return;
+    }
+    redraw();
+  });
+})();
 
 // ---- Sensors tab: cable colors and pin numbers, PNP / NPN hookup, NO / NC ----
 // Standard M8 / M12 sensor cable colors (IEC 60947-5-2 / EN 60947-5-2)
@@ -2587,6 +2723,12 @@ function renderPage() {
   resultsBox = document.createElement("div");
   resultsBox.className = "card results";
   app.appendChild(resultsBox);
+  orientBox = null;
+  if (S.tab === 4) {
+    orientBox = document.createElement("div");
+    orientBox.className = "card results orient-card";
+    app.appendChild(orientBox);
+  }
   renderResults();
 
   histBox = document.createElement("details");
@@ -2981,36 +3123,38 @@ function renderResults() {
     if (c4.m === "e2q") {
       var q = eulerToQuat(c4.x, c4.y, c4.z);
       if (q[0] < 0) q = q.map(function (x) { return -x; }); // same orientation, shown with q1 positive like the controller
+      var qDraw = q;
       q = q.map(function (x) { return plain(x, 6); });
-      h += '<div class="big-label">Quaternion</div><div class="grid g4">' +
+      h += '<div class="big-label mid">Quaternion</div><div class="grid g4">' +
         q.map(function (x, i) {
           return '<div class="cell tap" data-copy="' + x + '"><b>q' + (i + 1) + "</b><span>" + x + "</span></div>";
         }).join("") + "</div>";
       copies.push(["Copy [q1,q2,q3,q4]", "[" + q.join(",") + "]"]);
-      copies.push(["Copy OrientZYX(Z,Y,X)", "OrientZYX(" + [c4.z, c4.y, c4.x].join(",") + ")"]);
       sum = ["Quaternion", "[" + q.join(", ") + "]"];
     } else {
       var raw = [c4.q1, c4.q2, c4.q3, c4.q4];
       var len = Math.sqrt(raw.reduce(function (a, x) { return a + x * x; }, 0));
       if (len === 0) {
         resultsBox.innerHTML = h + '<p class="err">A quaternion can\'t be all zeros.</p>';
+        if (orientBox) orientBox.innerHTML = "";
         setBar(["Results", "Quaternion can't be all zeros"]);
         lastSum = null;
         return;
       }
       var qn = raw.map(function (x) { return x / len; });
       var both = quatToEuler(qn), e = both[0].map(function (x) { return plain(x, 6); });
+      var qDraw = qn;
       var e2 = both[1].map(function (x) { return plain(x, 6); });
-      h += '<div class="big-label">Euler Angles</div><div class="grid g3">' +
+      h += '<div class="big-label mid">Euler Angles</div><div class="grid g3">' +
         ["X", "Y", "Z"].map(function (a, i) {
           return '<div class="cell tap" data-copy="' + e[i] + '"><b>' + a + "</b><span>" + e[i] + '<i class="deg">&deg;</i></span></div>';
         }).join("") + "</div>";
       h += '<div class="rows">' + row("Same As", "X " + e2[0] + "°  Y " + e2[1] + "°  Z " + e2[2] + "°") +
         row("Normalized", "[" + qn.map(function (x) { return plain(Math.abs(x) < 1e-6 ? 0 : x, 6); }).join(", ") + "]") + "</div>";
       copies.push(["Copy [X,Y,Z]", "[" + e.join(",") + "]"]);
-      copies.push(["Copy OrientZYX(Z,Y,X)", "OrientZYX(" + [e[2], e[1], e[0]].join(",") + ")"]);
       sum = ["", "X " + e[0] + "°  Y " + e[1] + "°  Z " + e[2] + "°"];
     }
+    if (orientBox) orientBox.innerHTML = orientSvg(qDraw);
   }
   copies.forEach(function (cp, i) {
     h += '<button type="button" class="copy' + (i ? " alt2" : "") + '" data-copy="' + esc(cp[1]) + '">' + cp[0] + "</button>";
@@ -3193,7 +3337,7 @@ document.addEventListener("touchstart", function (e) {
   // The tab strip swipes between pages; the bottom menu swipes between groups
   var ae = document.activeElement, keyboard = typing || (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName));
   if (keyboard) { swipe = null; return; } // no swiping while the keyboard is open
-  if (e.touches.length !== 1 || t.closest("input, select, textarea, header, #upd, #bar, #log, #srch") ||
+  if (e.touches.length !== 1 || t.closest("input, select, textarea, header, #upd, #bar, #log, #srch, svg.orient") ||
       (window.visualViewport && window.visualViewport.scale > 1.01)) { swipe = null; return; }
   swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), dx: 0, side: false,
     sub: !!SWIPE_SUBS[S.tab] && onChoiceArea(e.touches[0].clientX, e.touches[0].clientY), nav: !!t.closest("nav") };

@@ -1,6 +1,12 @@
 // What's New. Add a new entry at the top with every version (same number as version.js).
 // Keep each line short and in plain words: what changed for the person using the app.
 var CHANGELOG = [
+  { v: "v87", d: "10/19/2026", n: [
+    "Orientation: new Tool Orientation card that draws the tool's x, y and z against the base X, Y and Z",
+    "Drag the drawing to turn the view, or tap Iso, Top, Front or Side; Play spins it once around",
+    "Pick Gray (tool drawn over the base) or Side by Side (base and tool apart); the choice is remembered",
+    "Copy OrientZYX buttons removed"
+  ] },
   { v: "v86", d: "10/19/2026", n: [
     "Orientation: fixed wrong X and Z angles when Y is at 90° or -90°",
     "Orientation: controller noise like 6.12323e-17 counts as 0, so [0, 0, 1, 0] reads X 0° Y 180° Z 0°",
