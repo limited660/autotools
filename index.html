@@ -723,7 +723,7 @@ label.field:has(.stepper) > span { padding-left: 4px; }
 .results .orient-views.orient-end { margin-bottom: 0; }
 .results .cell { text-align: center; }
 .results svg.orient { display: block; width: 100%; max-width: 420px; margin: 4px auto 0; overflow: visible;
-  touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+  touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
 .results .orient-views { display: flex; justify-content: center; flex-wrap: wrap; gap: 2px 4px; margin: -6px 0 8px; }
 .results .orient-styles { margin: 0 0 2px; }
 .results .orient-style.on { color: var(--text); text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
@@ -1434,17 +1434,34 @@ function orientInner() {
 (function () {
   var drag = null;
   var redraw = function () { var svg = document.querySelector("svg.orient"); if (svg) svg.innerHTML = orientInner(); };
-  // a finger that lands on the drawing only turns it: the page doesn't scroll until it lifts
-  // (touch-action alone isn't enough on every phone browser)
-  var held = false;
+  // Finger on the drawing: the first move decides. Mostly sideways turns the drawing (and then
+  // up / down tips it too, with the page held still); mostly up / down scrolls the page as usual.
+  var tdrag = null;
   document.addEventListener("touchstart", function (e) {
-    held = !!(e.target.closest && e.target.closest("svg.orient"));
+    tdrag = null;
+    if (e.touches.length !== 1 || !(e.target.closest && e.target.closest("svg.orient"))) return;
+    ORA++; // touching the drawing stops Play
+    tdrag = { x: e.touches[0].clientX, y: e.touches[0].clientY, yaw: ORV.yaw, pitch: ORV.pitch, lock: 0 };
   }, { passive: true });
-  document.addEventListener("touchmove", function (e) { if (held) e.preventDefault(); }, { passive: false });
-  ["touchend", "touchcancel"].forEach(function (ev) { document.addEventListener(ev, function () { held = false; }); });
+  document.addEventListener("touchmove", function (e) {
+    if (!tdrag) return;
+    var dx = e.touches[0].clientX - tdrag.x, dy = e.touches[0].clientY - tdrag.y;
+    if (!tdrag.lock) {
+      if (Math.abs(dx) > Math.abs(dy)) e.preventDefault(); // hold off the scroll while deciding
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      if (Math.abs(dx) <= Math.abs(dy)) { tdrag = null; return; } // a scroll: leave it to the page
+      tdrag.lock = 1;
+    }
+    e.preventDefault();
+    ORV.yaw = tdrag.yaw - dx * 0.6;
+    ORV.pitch = Math.max(-90, Math.min(90, tdrag.pitch + dy * 0.6));
+    redraw();
+  }, { passive: false });
+  ["touchend", "touchcancel"].forEach(function (ev) { document.addEventListener(ev, function () { tdrag = null; }); });
+  // mouse and pen
   document.addEventListener("pointerdown", function (e) {
     var svg = e.target.closest && e.target.closest("svg.orient");
-    if (!svg) return;
+    if (!svg || e.pointerType === "touch") return;
     ORA++; // dragging stops Play
     drag = { x: e.clientX, y: e.clientY, yaw: ORV.yaw, pitch: ORV.pitch };
     try { svg.setPointerCapture(e.pointerId); } catch (err) {}
